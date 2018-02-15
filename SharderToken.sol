@@ -183,9 +183,9 @@ contract StandardToken is BasicToken, ERC20 {
 /// @title Sharder Protocol Token.
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
-contract ConchToken is StandardToken {
-    string public constant NAME = "SharderStorage";
-    string public constant SYMBOL = "SS";
+contract SharderToken is StandardToken {
+    string public constant NAME = "SharderStorageTest";
+    string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
 
     /// We split the entire token sale period into 2 phases.
@@ -204,7 +204,8 @@ contract ConchToken is StandardToken {
 
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    uint16 public constant BLOCKS_PER_PHASE = 15250;
+    /// Set to 212 blocks(1 hour) in test network
+    uint16 public constant BLOCKS_PER_PHASE = 212;
 
     /// This is where we hold ETH during this token sale. We will not transfer any Ether
     /// out of this address before we invocate the `close` function to finalize the sale.
@@ -228,7 +229,7 @@ contract ConchToken is StandardToken {
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 8000 ether;
+    uint256 public constant HARD_CAP = 3 ether;
 
     /// Maximum unsold ratio, this is hit when the mininum level of amount of fund is raised.
     uint256 public constant MAX_UNSOLD_RATIO = 675; // 67.5%
@@ -333,8 +334,8 @@ contract ConchToken is StandardToken {
     /// @dev Issue token based on Ether received.
     /// @param recipient Address that newly issued token will be sent to.
     function issueToken(address recipient) public payable inProgress {
-        // We only accept minimum purchase of 1 ETH.
-        assert(msg.value >= 1 ether);
+        // We only accept minimum purchase of 0.01 ETH.
+        assert(msg.value >= 0.01 ether);
 
         uint tokens = computeTokenAmount(msg.value);
         totalEthReceived = totalEthReceived.add(msg.value);
