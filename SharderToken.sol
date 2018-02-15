@@ -183,7 +183,7 @@ contract StandardToken is BasicToken, ERC20 {
 /// @title Sharder Protocol Token.
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
-contract ConchToken is StandardToken {
+contract SharderToken is StandardToken {
     string public constant NAME = "SharderStorage";
     string public constant SYMBOL = "SS";
     uint public constant DECIMALS = 18;
