@@ -1,3 +1,4 @@
+
 pragma solidity ^0.4.11;
 
 /**
@@ -43,13 +44,6 @@ library SafeMath {
   function min256(uint256 a, uint256 b) internal pure returns (uint256) {
     return a < b ? a : b;
   }
-
-//  function assert(bool assertion) internal {
-//      require(!assertion);
-////    if (!assertion) {
-////      throw;
-////    }
-//  }
 }
 
 
@@ -90,9 +84,6 @@ contract BasicToken is ERC20Basic {
    */
   modifier onlyPayloadSize(uint size) {
      require(msg.data.length < size + 4);
-//     if(msg.data.length < size + 4) {
-//       throw;
-//     }
      _;
   }
 
@@ -141,8 +132,6 @@ contract StandardToken is BasicToken, ERC20 {
     var _allowance = allowed[_from][msg.sender];
 
     // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
-    // if (_value > _allowance) throw;
-
     balances[_to] = balances[_to].add(_value);
     balances[_from] = balances[_from].sub(_value);
     allowed[_from][msg.sender] = _allowance.sub(_value);
@@ -161,7 +150,6 @@ contract StandardToken is BasicToken, ERC20 {
     //  already 0 to mitigate the race condition described here:
     //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
     require((_value != 0) && (allowed[msg.sender][_spender] != 0));
-//    if ((_value != 0) && (allowed[msg.sender][_spender] != 0)) throw;
 
     allowed[msg.sender][_spender] = _value;
     Approval(msg.sender, _spender, _value);
@@ -296,7 +284,7 @@ contract SharderToken is StandardToken {
      *
      * @dev Initialize the Sharder Token
      */
-    function ConchToken() public {
+    function SharderToken() public {
         target = msg.sender;
     }
 
