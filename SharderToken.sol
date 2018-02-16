@@ -199,7 +199,7 @@ contract SharderToken is StandardToken {
     ];
 
     /// Base exchange rate is set to 1 ETH = 32000 SS.
-    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com.
+    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
     uint256 public constant BASE_RATE = 32000;
 
     uint public constant NUM_OF_PHASE = 2;
@@ -207,6 +207,9 @@ contract SharderToken is StandardToken {
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
     uint16 public constant BLOCKS_PER_PHASE = 15250;
+
+    /// Max promotion
+    uint public constant MAX_PROMOTION = 4000000;
 
     /// This is where we hold ETH during this token sale. We will not transfer any Ether
     /// out of this address before we invocate the `close` function to finalize the sale.
@@ -369,10 +372,14 @@ contract SharderToken is StandardToken {
         }
 
         uint tokenBase = ethAmount.mul(BASE_RATE);
+
+        //Check phase and promotion supply
         uint tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
+        if(totalEthReceived*BASE_RATE >= MAX_PROMOTION) {
+            tokenBonus = 0;
+        }
 
         tokens = tokenBase.add(tokenBonus);
-
     }
 
     /// @dev Issue unsold token to `target` address.
