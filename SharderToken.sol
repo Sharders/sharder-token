@@ -195,6 +195,9 @@ contract SharderToken is StandardToken {
     /// Set to 212 blocks(1 hour) in test network
     uint16 public constant BLOCKS_PER_PHASE = 212;
 
+    /// Max promotion
+    uint public constant MAX_PROMOTION = 4000000;
+
     /// This is where we hold ETH during this token sale. We will not transfer any Ether
     /// out of this address before we invocate the `close` function to finalize the sale.
     /// This promise is not guanranteed by smart contract by can be verified with public
@@ -356,10 +359,12 @@ contract SharderToken is StandardToken {
         }
 
         uint tokenBase = ethAmount.mul(BASE_RATE);
+        //Check phase and promotion supply
         uint tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
-
+        if(totalEthReceived*BASE_RATE >= MAX_PROMOTION) {
+            tokenBonus = 0;
+        }
         tokens = tokenBase.add(tokenBonus);
-
     }
 
     /// @dev Issue unsold token to `target` address.
