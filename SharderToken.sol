@@ -201,8 +201,8 @@ contract TokenERC20  {
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
 contract SharderToken is TokenERC20 {
-    string public constant NAME = "Sharder Storage Tester";
-    string public constant SYMBOL = "SST";
+    string public constant NAME = "Sharder Storage";
+    string public constant SYMBOL = "SS";
     uint public constant DECIMALS = 18;
 
     ///   +-----------------------------------------------------------------------------------+
@@ -214,14 +214,14 @@ contract SharderToken is TokenERC20 {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 300;
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
 
     /// Max promotion
-    uint256 public constant MAX_PROMOTION_SS = 2;
+    uint256 public constant MAX_PROMOTION_SS = 2000000;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 3 ether;
+    uint256 public constant HARD_CAP = 2000 ether;
 
     /// We split the entire token sale period into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
@@ -233,25 +233,24 @@ contract SharderToken is TokenERC20 {
 
     /// Base exchange rate is set to 1 ETH = 32000 SS.
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    /// Test network set to 1 ETH = 66666666 SS.
-    uint256 public constant BASE_RATE = 66;
+    uint256 public constant BASE_RATE = 32000;
 
+    /// Phases of crowdsale.
     uint public constant NUM_OF_PHASE = 2;
 
-    /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
+    /// Each phase contains exactly 76250 Ethereum blocks, which is roughly 15 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
-    uint public constant BLOCKS_PER_PHASE = 53;
+    uint public constant BLOCKS_PER_PHASE = 76250;
 
     /// 1 ether == 1000 finney
     /// Min contribution: 0.01 ether
     uint256 public constant CONTRIBUTION_MIN = 10 finney;
 
-    /// Max contribution: 2 ether
-    uint256 public constant CONTRIBUTION_MAX = 2000 finney;
+    /// Max contribution: 5 ether
+    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
 
 
-    /// This is where we hold ETH during this crowdsale. We will not transfer any ether
+    /// This is where we hold ether during this crowdsale. We will not transfer any ether
     /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
     /// This promise is not guanranteed by smart contract by can be verified with public
     /// Ethereum transactions data available on several blockchain browsers.
@@ -442,7 +441,6 @@ contract SharderToken is TokenERC20 {
             unsoldTokenIssued = true;
         }
     }
-
 
     /// @return true if sale has started, false otherwise.
     function saleStarted() public constant returns (bool) {
