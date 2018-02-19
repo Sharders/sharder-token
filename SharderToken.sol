@@ -1,114 +1,64 @@
+/*
+  Copyright 2017 Sharder Foundation.
 
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/
 pragma solidity ^0.4.11;
 
 /**
  * Math operations with safety checks
  */
 library SafeMath {
-  function mul(uint a, uint b) internal pure returns (uint) {
-    uint c = a * b;
-    assert(a == 0 || c / a == b);
-    return c;
-  }
+    function mul(uint a, uint b) internal pure returns (uint) {
+        uint c = a * b;
+        assert(a == 0 || c / a == b);
+        return c;
+    }
 
-  function div(uint a, uint b) internal pure returns (uint) {
-    // assert(b > 0); // Solidity automatically throws when dividing by 0
-    uint c = a / b;
-    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-    return c;
-  }
+    function div(uint a, uint b) internal pure returns (uint) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
 
-  function sub(uint a, uint b) internal pure returns (uint) {
-    assert(b <= a);
-    return a - b;
-  }
+    function sub(uint a, uint b) internal pure returns (uint) {
+        assert(b <= a);
+        return a - b;
+    }
 
-  function add(uint a, uint b) internal pure returns (uint) {
-    uint c = a + b;
-    assert(c >= a);
-    return c;
-  }
+    function add(uint a, uint b) internal pure returns (uint) {
+        uint c = a + b;
+        assert(c >= a);
+        return c;
+    }
 
-  function max64(uint64 a, uint64 b) internal pure returns (uint64) {
-    return a >= b ? a : b;
-  }
+    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a >= b ? a : b;
+    }
 
-  function min64(uint64 a, uint64 b) internal pure returns (uint64) {
-    return a < b ? a : b;
-  }
+    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a < b ? a : b;
+    }
 
-  function max256(uint256 a, uint256 b) internal pure returns (uint256) {
-    return a >= b ? a : b;
-  }
+    function max256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a >= b ? a : b;
+    }
 
-  function min256(uint256 a, uint256 b) internal pure returns (uint256) {
-    return a < b ? a : b;
-  }
+    function min256(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
 }
-
-
-/**
- * @title ERC20Basic
- * @dev Simpler version of ERC20 interface
- * @dev see https://github.com/ethereum/EIPs/issues/20
- */
-contract ERC20Basic {
-  uint public totalSupply;
-  function balanceOf(address who) public constant returns (uint);
-  function transfer(address to, uint value) internal;
-  event Transfer(address indexed from, address indexed to, uint value);
-}
-
-/**
- * @title ERC20 interface
- * @dev see https://github.com/ethereum/EIPs/issues/20
- */
-contract ERC20 is ERC20Basic {
-  function allowance(address owner, address spender) public constant returns (uint);
-  function transferFrom(address from, address to, uint value) internal;
-  function approve(address spender, uint value) public;
-  event Approval(address indexed owner, address indexed spender, uint value);
-}
-
-/**
- * @title Basic token
- * @dev Basic version of StandardToken, with no allowances.
- */
-contract BasicToken is ERC20Basic {
-  using SafeMath for uint;
-
-  mapping(address => uint) balances;
-
-  /**
-   * @dev Fix for the ERC20 short address attack.
-   */
-  modifier onlyPayloadSize(uint size) {
-     require(msg.data.length < size + 4);
-     _;
-  }
-
-  /**
-  * @dev transfer token for a specified address
-  * @param _to The address to transfer to.
-  * @param _value The amount to be transferred.
-  */
-  function transfer(address _to, uint _value) internal onlyPayloadSize(2 * 32) {
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    Transfer(msg.sender, _to, _value);
-  }
-
-  /**
-  * @dev Gets the balance of the specified address.
-  * @param _owner The address to query the the balance of.
-  * @return An uint representing the amount owned by the passed address.
-  */
-  function balanceOf(address _owner) public constant returns (uint balance) {
-    return balances[_owner];
-  }
-
-}
-
 
 /**
  * @title Standard ERC20 token
@@ -117,53 +67,127 @@ contract BasicToken is ERC20Basic {
  * @dev https://github.com/ethereum/EIPs/issues/20
  * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-contract StandardToken is BasicToken, ERC20 {
+contract StandardToken  {
+    using SafeMath for uint;
 
-  mapping (address => mapping (address => uint)) allowed;
+    uint public totalSupply;
+
+    mapping (address => mapping (address => uint)) allowed;
+    mapping(address => uint) balances;
+
+    //
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    //
+    event Approval(address indexed owner, address indexed spender, uint value);
+
+    // This notifies clients about the amount burnt
+    event Burn(address indexed from, uint256 value);
 
 
-  /**
-   * @dev Transfer tokens from one address to another
-   * @param _from address The address which you want to send tokens from
-   * @param _to address The address which you want to transfer to
-   * @param _value uint the amout of tokens to be transfered
-   */
-  function transferFrom(address _from, address _to, uint _value) internal onlyPayloadSize(3 * 32) {
-    var _allowance = allowed[_from][msg.sender];
+    /**
+        * @dev Fix for the ERC20 short address attack.
+        */
+    modifier onlyPayloadSize(uint size) {
+        require(msg.data.length < size + 4);
+        _;
+    }
 
-    // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
-    balances[_to] = balances[_to].add(_value);
-    balances[_from] = balances[_from].sub(_value);
-    allowed[_from][msg.sender] = _allowance.sub(_value);
-    Transfer(_from, _to, _value);
-  }
+    /**
+    * @dev transfer token for a specified address
+    * @param _to The address to transfer to.
+    * @param _value The amount to be transferred.
+    */
+    function transfer(address _to, uint _value) internal onlyPayloadSize(2 * 32) {
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        balances[_to] = balances[_to].add(_value);
+        Transfer(msg.sender, _to, _value);
+    }
 
-  /**
-   * @dev Aprove the passed address to spend the specified amount of tokens on beahlf of msg.sender.
-   * @param _spender The address which will spend the funds.
-   * @param _value The amount of tokens to be spent.
-   */
-  function approve(address _spender, uint _value) public {
+    /**
+    * @dev Gets the balance of the specified address.
+    * @param _owner The address to query the the balance of.
+    * @return An uint representing the amount owned by the passed address.
+    */
+    function balanceOf(address _owner) public constant returns (uint balance) {
+        return balances[_owner];
+    }
 
-    // To change the approve amount you first have to reduce the addresses`
-    //  allowance to zero by calling `approve(_spender, 0)` if it is not
-    //  already 0 to mitigate the race condition described here:
-    //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-    require((_value != 0) && (allowed[msg.sender][_spender] != 0));
+    /**
+     * @dev Transfer tokens from one address to another
+     * @param _from address The address which you want to send tokens from
+     * @param _to address The address which you want to transfer to
+     * @param _value uint the amout of tokens to be transfered
+     */
+    function transferFrom(address _from, address _to, uint _value) internal onlyPayloadSize(3 * 32) {
+        var _allowance = allowed[_from][msg.sender];
 
-    allowed[msg.sender][_spender] = _value;
-    Approval(msg.sender, _spender, _value);
-  }
+        // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
+        balances[_to] = balances[_to].add(_value);
+        balances[_from] = balances[_from].sub(_value);
+        allowed[_from][msg.sender] = _allowance.sub(_value);
+        Transfer(_from, _to, _value);
+    }
 
-  /**
-   * @dev Function to check the amount of tokens than an owner allowed to a spender.
-   * @param _owner address The address which owns the funds.
-   * @param _spender address The address which will spend the funds.
-   * @return A uint specifing the amount of tokens still avaible for the spender.
-   */
-  function allowance(address _owner, address _spender) public constant returns (uint remaining) {
-    return allowed[_owner][_spender];
-  }
+    /**
+     * @dev Aprove the passed address to spend the specified amount of tokens on beahlf of msg.sender.
+     * @param _spender The address which will spend the funds.
+     * @param _value The amount of tokens to be spent.
+     */
+    function approve(address _spender, uint _value) public {
+        // To change the approve amount you first have to reduce the addresses`
+        //  allowance to zero by calling `approve(_spender, 0)` if it is not
+        //  already 0 to mitigate the race condition described here:
+        //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+        require((_value != 0) && (allowed[msg.sender][_spender] != 0));
+
+        allowed[msg.sender][_spender] = _value;
+        Approval(msg.sender, _spender, _value);
+    }
+
+    /**
+     * @dev Function to check the amount of tokens than an owner allowed to a spender.
+     * @param _owner address The address which owns the funds.
+     * @param _spender address The address which will spend the funds.
+     * @return A uint specifing the amount of tokens still avaible for the spender.
+     */
+    function allowance(address _owner, address _spender) public constant returns (uint remaining) {
+        return allowed[_owner][_spender];
+    }
+
+
+    /**
+       * Destroy tokens
+       *
+       * Remove `_value` tokens from the system irreversibly
+       *
+       * @param _value the amount of money to burn
+       */
+    function burn(uint256 _value) public returns (bool success) {
+        require(balances[msg.sender] >= _value);   /// Check if the sender has enough
+        balances[msg.sender] -= _value;            /// Subtract from the sender
+        totalSupply -= _value;                      /// Updates totalSupply
+        Burn(msg.sender, _value);
+        return true;
+    }
+
+    /**
+     * Destroy tokens from other account
+     *
+     * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
+     *
+     * @param _from the address of the sender
+     * @param _value the amount of money to burn
+     */
+    function burnFrom(address _from, uint256 _value) public returns (bool success) {
+        require(balances[_from] >= _value);                /// Check if the targeted balance is enough
+        require(_value <= allowed[_from][msg.sender]);    /// Check allowance
+        balances[_from] -= _value;                         /// Subtract from the targeted balance
+        allowed[_from][msg.sender] -= _value;             /// Subtract from the sender's allowance
+        totalSupply -= _value;                              /// Update totalSupply
+        Burn(_from, _value);
+        return true;
+    }
 
 }
 
@@ -172,31 +196,48 @@ contract StandardToken is BasicToken, ERC20 {
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
 contract SharderToken is StandardToken {
-    string public constant NAME = "SharderStorageTest";
+    string public constant NAME = "SharderStorageTester";
     string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
 
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |                        SS Token Issue Plan - First Round                          |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |  Total Sale  |   Airdrop    |  Community Reserve  |  Team Reserve | System Reward |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |     50%      |     10%      |         10%         |  Don't Issued | Don't Issued  |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
+    ///   +-----------------------------------------------------------------------------------+
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
+
+    /// Max promotion
+    uint256 public constant MAX_PROMOTION_SS = 2000000;
+
+    /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
+    /// We'll adjust hard cap in Feb. 21.
+    uint256 public constant HARD_CAP = 3 ether;
+
     /// We split the entire token sale period into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
-    /// The first phase or early-bird phase has a much higher bonus.
+    /// The first phase of crowdsale has a much higher bonus.
     uint8[2] public bonusPercentages = [
     20,
     0
     ];
 
     /// Base exchange rate is set to 1 ETH = 32000 SS.
-    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com.
-    uint256 public constant BASE_RATE = 32000;
+    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
+    /// Test network set to 1 ETH = 85333333 SS.
+    uint256 public constant BASE_RATE = 66666666;
 
     uint public constant NUM_OF_PHASE = 2;
 
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    /// Set to 212 blocks(1 hour) in test network
-    uint16 public constant BLOCKS_PER_PHASE = 212;
+    /// Test network set to 0.5 hour = 212 blocks.
+    uint16 public constant BLOCKS_PER_PHASE = 106;
 
-    /// Max promotion
-    uint public constant MAX_PROMOTION = 4000000;
 
     /// This is where we hold ETH during this token sale. We will not transfer any Ether
     /// out of this address before we invocate the `close` function to finalize the sale.
@@ -215,18 +256,11 @@ contract SharderToken is StandardToken {
     /// is managed by the project team and is issued directly to `target`.
     bool public unsoldTokenIssued = false;
 
-    /// Minimum amount of funds to be raised for the sale to succeed.
-    uint256 public constant GOAL = 1 ether;
-
-    /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
-    /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 3 ether;
-
-    /// Maximum unsold ratio, this is hit when the mininum level of amount of fund is raised.
-    uint256 public constant MAX_UNSOLD_RATIO = 675; // 67.5%
-
-    /// A simple stat for emitting events.
+    /// Received Ether
     uint256 public totalEthReceived = 0;
+
+    /// Sold SS
+    uint256 public soldSS = 0;
 
     /// Issue event index starting from 0.
     uint256 public issueIndex = 0;
@@ -258,10 +292,12 @@ contract SharderToken is StandardToken {
     /// address with a minor deduction of transaction fee（gas)
     event SaleFailed();
 
+    /* This generates a public event on the blockchain that will notify clients */
+    event FrozenFunds(address target, bool frozen);
+
     /*
      * MODIFIERS
      */
-
     modifier onlyOwner {
         require(msg.sender == target);
         _;
@@ -289,6 +325,7 @@ contract SharderToken is StandardToken {
      */
     function SharderToken() public {
         target = msg.sender;
+        totalSupply = FIRST_ROUND_ISSUED_SS;
     }
 
     /*
@@ -302,13 +339,9 @@ contract SharderToken is StandardToken {
     }
 
     /// @dev Triggers unsold tokens to be issued to `target` address.
-    function close() public onlyOwner afterEnd {
-        if (totalEthReceived < GOAL) {
-            SaleFailed();
-        } else {
-            issueUnsoldToken();
-            SaleSucceeded();
-        }
+    function closeCrowdsale() public onlyOwner afterEnd {
+        issueUnsoldToken();
+        SaleSucceeded();
     }
 
     /// @dev Returns the current price.
@@ -329,24 +362,29 @@ contract SharderToken is StandardToken {
         assert(msg.value >= 0.01 ether);
 
         uint tokens = computeTokenAmount(msg.value);
+
         totalEthReceived = totalEthReceived.add(msg.value);
-        totalSupply = totalSupply.add(tokens);
+
+        soldSS = soldSS.add(tokens.div(1000000000000000000));
+
         balances[recipient] = balances[recipient].add(tokens);
 
-        Issue(
-            issueIndex++,
-            recipient,
-            msg.value,
-            tokens
-        );
+        Issue(issueIndex++,recipient,msg.value,tokens);
 
         require(target.send(msg.value));
+    }
+
+    /// @dev Issue token for reserve.
+    /// @param recipient Address that newly issued token will be sent to.
+    function issueReserveToken(address recipient, uint256 issueTokenAmount) onlyOwner public {
+        balances[recipient] = balances[recipient].add(issueTokenAmount);
+        totalSupply = totalSupply.add(issueTokenAmount);
+        Issue(issueIndex++,recipient,0,issueTokenAmount);
     }
 
     /*
      * INTERNAL FUNCTIONS
      */
-
     /// @dev Compute the amount of SS token that can be purchased.
     /// @param ethAmount Amount of Ether to purchase SS.
     /// @return Amount of SS token to purchase
@@ -359,72 +397,34 @@ contract SharderToken is StandardToken {
         }
 
         uint tokenBase = ethAmount.mul(BASE_RATE);
-        //Check phase and promotion supply
-        uint tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
-        if(totalEthReceived*BASE_RATE >= MAX_PROMOTION) {
-            tokenBonus = 0;
+
+        //Check promotion supply and phase bonus
+        uint tokenBonus = 0;
+        if(totalEthReceived*BASE_RATE < MAX_PROMOTION_SS) {
+            tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
         }
+
         tokens = tokenBase.add(tokenBonus);
     }
 
     /// @dev Issue unsold token to `target` address.
-    /// Step is 2.5%, the detail is as follows:
-    ///   +-------------------------------------------------------------+
-    ///   |       Total Ethers Received        |                        |
-    ///   +------------------------------------+  Unsold Token Portion  |
-    ///   |   Lower Bound   |   Upper Bound    |                        |
-    ///   +-------------------------------------------------------------+
-    ///   |      1,000      |     2,000        |         67.5%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      2,000      |     3,000        |         65.0%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      3,000      |     4,000        |         62.5%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      4,000      |     5,000        |         60.0%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      5,000      |     6,000        |         57.5%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      6,000      |     7,000        |         55.0%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      7,000      |     8,000        |         52.5%          |
-    ///   +-------------------------------------------------------------+
-    ///   |      8,000      |                  |         50.0%          |
-    ///   +-------------------------------------------------------------+
     function issueUnsoldToken() internal {
         if (unsoldTokenIssued) {
             InvalidState("Unsold token has been issued already");
         } else {
             // Add another safe guard
-            require(totalEthReceived >= GOAL);
+            require(soldSS > 0);
 
-            uint level = totalEthReceived.sub(GOAL).div(1 ether);
-            if (level > 7) { level = 7; }
+            uint unsoldToken = totalSupply.div(soldSS);
 
-            uint unsoldRatioInThousand = MAX_UNSOLD_RATIO - 25 * level;
-
-            // Calculate the `unsoldToken` to be issued, the amount of `unsoldToken`
-            // is based on the issued amount, that is the `totalSupply`, during
-            // the sale:
-            //                   totalSupply
-            //   unsoldToken = --------------- * r
-            //                      1 - r
-            uint unsoldToken = totalSupply.div(1000 - unsoldRatioInThousand).mul(unsoldRatioInThousand);
-
-            // Adjust `totalSupply`.
-            totalSupply = totalSupply.add(unsoldToken);
-            // Issue `unsoldToken` to the target account.
+            // Issue 'unsoldToken' to the target account.
             balances[target] = balances[target].add(unsoldToken);
-
-            Issue(
-                issueIndex++,
-                target,
-                0,
-                unsoldToken
-            );
+            Issue(issueIndex++,target,0,unsoldToken);
 
             unsoldTokenIssued = true;
         }
     }
+
 
     /// @return true if sale has started, false otherwise.
     function saleStarted() public constant returns (bool) {
