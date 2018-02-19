@@ -67,7 +67,7 @@ library SafeMath {
  * @dev https://github.com/ethereum/EIPs/issues/20
  * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
-contract StandardToken  {
+contract TokenERC20  {
     using SafeMath for uint;
 
     uint public totalSupply;
@@ -75,19 +75,18 @@ contract StandardToken  {
     mapping (address => mapping (address => uint)) allowed;
     mapping(address => uint) balances;
 
-    //
+    // This notifies clients about the amount to transfer
     event Transfer(address indexed from, address indexed to, uint256 value);
 
-    //
+    // This notifies clients about the amount to approve
     event Approval(address indexed owner, address indexed spender, uint value);
 
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
 
-
     /**
-        * @dev Fix for the ERC20 short address attack.
-        */
+    * @dev Fix for the ERC20 short address attack.
+    */
     modifier onlyPayloadSize(uint size) {
         require(msg.data.length < size + 4);
         _;
@@ -158,7 +157,6 @@ contract StandardToken  {
 
     /**
        * Destroy tokens
-       *
        * Remove `_value` tokens from the system irreversibly
        *
        * @param _value the amount of money to burn
@@ -173,7 +171,6 @@ contract StandardToken  {
 
     /**
      * Destroy tokens from other account
-     *
      * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
      *
      * @param _from the address of the sender
@@ -195,7 +192,7 @@ contract StandardToken  {
 /// @title Sharder Protocol Token.
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
-contract SharderToken is StandardToken {
+contract SharderToken is TokenERC20 {
     string public constant NAME = "SharderStorageTester";
     string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
@@ -228,15 +225,27 @@ contract SharderToken is StandardToken {
 
     /// Base exchange rate is set to 1 ETH = 32000 SS.
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    /// Test network set to 1 ETH = 85333333 SS.
+    /// Test network set to 1 ETH = 66666666 SS.
     uint256 public constant BASE_RATE = 66666666;
 
     uint public constant NUM_OF_PHASE = 2;
 
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    /// Test network set to 0.5 hour = 212 blocks.
-    uint16 public constant BLOCKS_PER_PHASE = 106;
+    /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
+    uint16 public constant BLOCKS_PER_PHASE = 53;
+
+    /// Min gas.
+    uint256 public constant GAS_MIN = 1;
+
+    /// Max gas.
+    uint256 public constant GAS_MAX = 6000000;
+
+    /// Min contribution: 0.01
+    uint256 public constant CONTRIBUTION_MIN = 10000000000000000;
+
+    /// Max contribution: 0.5
+    uint256 public constant CONTRIBUTION_MAX = 500000000000000000;
 
 
     /// This is where we hold ETH during this token sale. We will not transfer any Ether
@@ -332,14 +341,15 @@ contract SharderToken is StandardToken {
      * PUBLIC FUNCTIONS
      * @dev Start the token sale.
      */
-    function start(uint _firstblock) public onlyOwner beforeStart {
+    function startCrowdsale(uint _firstblock) public onlyOwner beforeStart {
         require(_firstblock > block.number);
-        firstblock = _firstblock;
+        firstblock = _firstblock.add(12);
         SaleStarted();
     }
 
     /// @dev Triggers unsold tokens to be issued to `target` address.
     function closeCrowdsale() public onlyOwner afterEnd {
+        require(!unsoldTokenIssued);
         issueUnsoldToken();
         SaleSucceeded();
     }
@@ -358,8 +368,11 @@ contract SharderToken is StandardToken {
     /// @dev Issue token based on Ether received.
     /// @param recipient Address that newly issued token will be sent to.
     function issueToken(address recipient) public payable inProgress {
-        // We only accept minimum purchase of 0.01 ETH.
-        assert(msg.value >= 0.01 ether);
+        //amount check:  We only accept 0.01ETH <= contribution <= 0.5ETH.
+        assert(CONTRIBUTION_MIN <=  msg.value && msg.value <= CONTRIBUTION_MAX);
+
+//        //gas check: We only accept 21000 <= gas <= 60000.
+//        assert(GAS_MIN <= msg.gas && msg.gas <= GAS_MAX);
 
         uint tokens = computeTokenAmount(msg.value);
 
@@ -377,9 +390,10 @@ contract SharderToken is StandardToken {
     /// @dev Issue token for reserve.
     /// @param recipient Address that newly issued token will be sent to.
     function issueReserveToken(address recipient, uint256 issueTokenAmount) onlyOwner public {
-        balances[recipient] = balances[recipient].add(issueTokenAmount);
+        uint256 ssAmount = issueTokenAmount.mul(1000000000000000000);
+        balances[recipient] = balances[recipient].add(ssAmount);
         totalSupply = totalSupply.add(issueTokenAmount);
-        Issue(issueIndex++,recipient,0,issueTokenAmount);
+        Issue(issueIndex++,recipient,0,ssAmount);
     }
 
     /*
@@ -400,7 +414,7 @@ contract SharderToken is StandardToken {
 
         //Check promotion supply and phase bonus
         uint tokenBonus = 0;
-        if(totalEthReceived*BASE_RATE < MAX_PROMOTION_SS) {
+        if(totalEthReceived * BASE_RATE < MAX_PROMOTION_SS) {
             tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
         }
 
@@ -415,11 +429,10 @@ contract SharderToken is StandardToken {
             // Add another safe guard
             require(soldSS > 0);
 
-            uint unsoldToken = totalSupply.div(soldSS);
-
+            uint256 unsoldSS = totalSupply.sub(soldSS).mul(1000000000000000000);
             // Issue 'unsoldToken' to the target account.
-            balances[target] = balances[target].add(unsoldToken);
-            Issue(issueIndex++,target,0,unsoldToken);
+            balances[target] = balances[target].add(unsoldSS);
+            Issue(issueIndex++,target,0,unsoldSS);
 
             unsoldTokenIssued = true;
         }
