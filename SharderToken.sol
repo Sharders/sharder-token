@@ -85,11 +85,24 @@ contract TokenERC20  {
     event Burn(address indexed from, uint256 value);
 
     /**
-    * @dev Fix for the ERC20 short address attack.
-    */
-    modifier onlyPayloadSize(uint size) {
-        require(msg.data.length < size + 4);
-        _;
+     * Internal transfer, only can be called by this contract
+     */
+    function _transfer(address _from, address _to, uint _value) internal {
+        // Prevent transfer to 0x0 address. Use burn() instead
+        require(_to != 0x0);
+        // Check if the sender has enough
+        require(balances[_from] >= _value);
+        // Check for overflows
+        require(balances[_to] + _value > balances[_to]);
+        // Save this for an assertion in the future
+        uint previousBalances = balances[_from] + balances[_to];
+        // Subtract from the sender
+        balances[_from] -= _value;
+        // Add the same to the recipient
+        balances[_to] += _value;
+        Transfer(_from, _to, _value);
+        // Asserts are used to use static analysis to find bugs in your code. They should never fail
+        assert(balances[_from] + balances[_to] == previousBalances);
     }
 
     /**
@@ -97,10 +110,21 @@ contract TokenERC20  {
     * @param _to The address to transfer to.
     * @param _value The amount to be transferred.
     */
-    function transfer(address _to, uint _value) internal onlyPayloadSize(2 * 32) {
-        balances[msg.sender] = balances[msg.sender].sub(_value);
-        balances[_to] = balances[_to].add(_value);
-        Transfer(msg.sender, _to, _value);
+    function transfer(address _to, uint _value) public {
+        _transfer(msg.sender, _to, _value);
+    }
+
+    /**
+    * @dev Transfer tokens from one address to another
+    * @param _from address The address which you want to send tokens from
+    * @param _to address The address which you want to transfer to
+    * @param _value uint the amout of tokens to be transfered
+    */
+    function transferFrom(address _from, address _to, uint _value) public returns (bool success) {
+        require(_value <= allowed[_from][msg.sender]);     // Check allowance
+        allowed[_from][msg.sender] -= _value;
+        _transfer(_from, _to, _value);
+        return true;
     }
 
     /**
@@ -110,22 +134,6 @@ contract TokenERC20  {
     */
     function balanceOf(address _owner) public constant returns (uint balance) {
         return balances[_owner];
-    }
-
-    /**
-     * @dev Transfer tokens from one address to another
-     * @param _from address The address which you want to send tokens from
-     * @param _to address The address which you want to transfer to
-     * @param _value uint the amout of tokens to be transfered
-     */
-    function transferFrom(address _from, address _to, uint _value) internal onlyPayloadSize(3 * 32) {
-        var _allowance = allowed[_from][msg.sender];
-
-        // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
-        balances[_to] = balances[_to].add(_value);
-        balances[_from] = balances[_from].sub(_value);
-        allowed[_from][msg.sender] = _allowance.sub(_value);
-        Transfer(_from, _to, _value);
     }
 
     /**
@@ -193,7 +201,7 @@ contract TokenERC20  {
 /// For more information about this token sale, please visit https://sharder.org
 /// @author Ben - <xy@sharder.org>.
 contract SharderToken is TokenERC20 {
-    string public constant NAME = "SharderStorageTester";
+    string public constant NAME = "Sharder Storage Tester";
     string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
 
@@ -206,10 +214,10 @@ contract SharderToken is TokenERC20 {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 300;
 
     /// Max promotion
-    uint256 public constant MAX_PROMOTION_SS = 2000000;
+    uint256 public constant MAX_PROMOTION_SS = 2;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
@@ -226,49 +234,45 @@ contract SharderToken is TokenERC20 {
     /// Base exchange rate is set to 1 ETH = 32000 SS.
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
     /// Test network set to 1 ETH = 66666666 SS.
-    uint256 public constant BASE_RATE = 66666666;
+    uint256 public constant BASE_RATE = 66;
 
     uint public constant NUM_OF_PHASE = 2;
 
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
     /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
-    uint16 public constant BLOCKS_PER_PHASE = 53;
+    uint public constant BLOCKS_PER_PHASE = 53;
 
-    /// Min gas.
-    uint256 public constant GAS_MIN = 1;
+    /// 1 ether == 1000 finney
+    /// Min contribution: 0.01 ether
+    uint256 public constant CONTRIBUTION_MIN = 10 finney;
 
-    /// Max gas.
-    uint256 public constant GAS_MAX = 6000000;
-
-    /// Min contribution: 0.01
-    uint256 public constant CONTRIBUTION_MIN = 10000000000000000;
-
-    /// Max contribution: 0.5
-    uint256 public constant CONTRIBUTION_MAX = 500000000000000000;
+    /// Max contribution: 2 ether
+    uint256 public constant CONTRIBUTION_MAX = 2000 finney;
 
 
-    /// This is where we hold ETH during this token sale. We will not transfer any Ether
-    /// out of this address before we invocate the `close` function to finalize the sale.
+    /// This is where we hold ETH during this crowdsale. We will not transfer any ether
+    /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
     /// This promise is not guanranteed by smart contract by can be verified with public
     /// Ethereum transactions data available on several blockchain browsers.
-    /// This is the only address from which `start` and `close` can be invocated.
+    /// This is the only address from which `startCrowdsale` and `closeCrowdsale` can be invocated.
     ///
     /// Note: this will be initialized during the contract deployment.
     address public target;
 
-    /// `firstblock` specifies from which block our token sale starts.
-    /// This can only be modified once by the owner of `target` address.
-    uint public firstblock = 0;
+    /// Crowdsale start block number.
+    uint public saleStartAtBlock = 0;
 
-    /// Indicates whether unsold token have been issued. This part of LRC token
-    /// is managed by the project team and is issued directly to `target`.
+    /// Crowdsale ended block number.
+    uint public saleEndAtBlock = 0;
+
+    /// Unsold ss token whether isssued.
     bool public unsoldTokenIssued = false;
 
-    /// Received Ether
+    /// Received ether
     uint256 public totalEthReceived = 0;
 
-    /// Sold SS
+    /// Sold SS token
     uint256 public soldSS = 0;
 
     /// Issue event index starting from 0.
@@ -339,17 +343,18 @@ contract SharderToken is TokenERC20 {
 
     /*
      * PUBLIC FUNCTIONS
-     * @dev Start the token sale.
+     * @dev Start the crowdsale.
      */
     function startCrowdsale(uint _firstblock) public onlyOwner beforeStart {
         require(_firstblock > block.number);
-        firstblock = _firstblock.add(12);
+        saleStartAtBlock = _firstblock.add(12);
         SaleStarted();
     }
 
-    /// @dev Triggers unsold tokens to be issued to `target` address.
+    /// @dev Close the crowdsale and issue unsold tokens to `target` address.
     function closeCrowdsale() public onlyOwner afterEnd {
         require(!unsoldTokenIssued);
+        saleEndAtBlock = block.number;
         issueUnsoldToken();
         SaleSucceeded();
     }
@@ -365,14 +370,14 @@ contract SharderToken is TokenERC20 {
         issueToken(msg.sender);
     }
 
-    /// @dev Issue token based on Ether received.
+    /// @dev Issue token based on ether received.
     /// @param recipient Address that newly issued token will be sent to.
     function issueToken(address recipient) public payable inProgress {
-        //amount check:  We only accept 0.01ETH <= contribution <= 0.5ETH.
-        assert(CONTRIBUTION_MIN <=  msg.value && msg.value <= CONTRIBUTION_MAX);
+        // Personal cap check
+        require(balances[recipient].div(BASE_RATE).add(msg.value) <= CONTRIBUTION_MAX);
 
-//        //gas check: We only accept 21000 <= gas <= 60000.
-//        assert(GAS_MIN <= msg.gas && msg.gas <= GAS_MAX);
+        // Contribution cap check
+        require(CONTRIBUTION_MIN <=  msg.value && msg.value <= CONTRIBUTION_MAX);
 
         uint tokens = computeTokenAmount(msg.value);
 
@@ -388,7 +393,7 @@ contract SharderToken is TokenERC20 {
     }
 
     /// @dev Issue token for reserve.
-    /// @param recipient Address that newly issued token will be sent to.
+    /// @param recipient Address that newly issued reserve token will be sent to.
     function issueReserveToken(address recipient, uint256 issueTokenAmount) onlyOwner public {
         uint256 ssAmount = issueTokenAmount.mul(1000000000000000000);
         balances[recipient] = balances[recipient].add(ssAmount);
@@ -403,7 +408,7 @@ contract SharderToken is TokenERC20 {
     /// @param ethAmount Amount of Ether to purchase SS.
     /// @return Amount of SS token to purchase
     function computeTokenAmount(uint ethAmount) internal view returns (uint tokens) {
-        uint phase = (block.number - firstblock).div(BLOCKS_PER_PHASE);
+        uint phase = (block.number - saleStartAtBlock).div(BLOCKS_PER_PHASE);
 
         // A safe check
         if (phase >= bonusPercentages.length) {
@@ -441,17 +446,17 @@ contract SharderToken is TokenERC20 {
 
     /// @return true if sale has started, false otherwise.
     function saleStarted() public constant returns (bool) {
-        return (firstblock > 0 && block.number >= firstblock);
+        return (saleStartAtBlock > 0 && block.number >= saleStartAtBlock);
     }
 
     /// @return true if sale has ended, false otherwise.
     function saleEnded() public constant returns (bool) {
-        return firstblock > 0 && (saleDue() || hardCapReached());
+        return saleStartAtBlock > 0 && (saleDue() || hardCapReached());
     }
 
     /// @return true if sale is due when the last phase is finished.
     function saleDue() public constant returns (bool) {
-        return block.number >= firstblock + BLOCKS_PER_PHASE * NUM_OF_PHASE;
+        return block.number >= saleStartAtBlock + BLOCKS_PER_PHASE * NUM_OF_PHASE;
     }
 
     /// @return true if the hard cap is reached.
