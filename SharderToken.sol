@@ -69,8 +69,8 @@ library SafeMath {
 */
 contract SharderToken {
     using SafeMath for uint;
-    string public constant NAME = "Sharder Storage";
-    string public constant SYMBOL = "SS";
+    string public constant NAME = "Sharder Storage Tester";
+    string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
     uint public totalSupply;
 
@@ -101,18 +101,19 @@ contract SharderToken {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
+    ///   First Round supply 300,000,000 -> 3,000
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 3000;
 
-    /// Max promotion
-    uint256 public constant MAX_PROMOTION_SS = 2000000;
+    /// Max promotion 2,000,000 -> 20
+    uint256 public constant MAX_PROMOTION_SS = 20;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 2000 ether;
+    uint256 public constant HARD_CAP = 4 ether;
 
-    /// Base exchange rate is set to 1 ether = 20869 SS.
+    /// Test network set to 1 ether = 5,000,000 SS -> 50
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 20869;
+    uint256 public constant BASE_RATE = 50;
 
     /// We split the entire crowdsale period into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
@@ -122,19 +123,19 @@ contract SharderToken {
     0
     ];
 
-    /// Phases of crowdsale.
     uint public constant NUM_OF_PHASE = 2;
 
-    /// Each phase contains exactly 76250 Ethereum blocks, which is roughly 15 days,
+    /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    uint public constant BLOCKS_PER_PHASE = 76250;
+    /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
+    uint public constant BLOCKS_PER_PHASE = 53;
 
     /// 1 ether == 1000 finney
     /// Min contribution: 0.01 ether
     uint256 public constant CONTRIBUTION_MIN = 10 finney;
 
-    /// Max contribution: 5 ether
-    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
+    /// Max contribution: 2 ether
+    uint256 public constant CONTRIBUTION_MAX = 2000 finney;
 
     /// Crowdsale start block number.
     uint public saleStartAtBlock = 0;
@@ -293,9 +294,9 @@ contract SharderToken {
     function burnFrom(address _from, uint256 _value) public returns (bool success) {
         require(balances[_from] >= _value);                /// Check if the targeted balance is enough
         require(_value <= allowed[_from][msg.sender]);    /// Check allowance
-        balances[_from] -= _value;                         /// Subtract from the targeted balance
+        balances[_from] -= _value;                        /// Subtract from the targeted balance
         allowed[_from][msg.sender] -= _value;             /// Subtract from the sender's allowance
-        totalSupply -= _value;                              /// Update totalSupply
+        totalSupply -= _value;                            /// Update totalSupply
         Burn(_from, _value);
         return true;
     }
