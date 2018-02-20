@@ -214,27 +214,27 @@ contract SharderToken is TokenERC20 {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 300;
+    ///   First Round supply 300,000,000 -> 3,000
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 3000;
 
-    /// Max promotion
-    uint256 public constant MAX_PROMOTION_SS = 2;
+    /// Max promotion 2,000,000 -> 20
+    uint256 public constant MAX_PROMOTION_SS = 20;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 3 ether;
+    uint256 public constant HARD_CAP = 4 ether;
 
-    /// We split the entire token sale period into 2 phases.
+    /// Test network set to 1 ether = 5,000,000 SS ->
+    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
+    uint256 public constant BASE_RATE = 50;
+
+    /// We split the entire crowdsale period into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
     /// The first phase of crowdsale has a much higher bonus.
     uint8[2] public bonusPercentages = [
     20,
     0
     ];
-
-    /// Base exchange rate is set to 1 ETH = 32000 SS.
-    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    /// Test network set to 1 ETH = 66666666 SS.
-    uint256 public constant BASE_RATE = 66;
 
     uint public constant NUM_OF_PHASE = 2;
 
@@ -251,7 +251,7 @@ contract SharderToken is TokenERC20 {
     uint256 public constant CONTRIBUTION_MAX = 2000 finney;
 
 
-    /// This is where we hold ETH during this crowdsale. We will not transfer any ether
+    /// This is where we hold ether during this crowdsale. We will not transfer any ether
     /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
     /// This promise is not guanranteed by smart contract by can be verified with public
     /// Ethereum transactions data available on several blockchain browsers.
