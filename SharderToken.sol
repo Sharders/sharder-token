@@ -61,19 +61,125 @@ library SafeMath {
 }
 
 /**
- * @title Standard ERC20 token
- *
- * @dev Implemantation of the basic standart token.
- * @dev https://github.com/ethereum/EIPs/issues/20
- * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
- */
-contract TokenERC20  {
+* @title Sharder Protocol Token.
+* For more information about this token sale, please visit https://sharder.org
+* @author Ben - <xy@sharder.org>.
+* @dev https://github.com/ethereum/EIPs/issues/20
+* @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
+*/
+contract SharderToken {
     using SafeMath for uint;
-
+    string public constant NAME = "Sharder Storage";
+    string public constant SYMBOL = "SS";
+    uint public constant DECIMALS = 18;
     uint public totalSupply;
 
     mapping (address => mapping (address => uint)) allowed;
     mapping(address => uint) balances;
+
+    /// This is where we hold ether during this crowdsale. We will not transfer any ether
+    /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
+    /// This promise is not guanranteed by smart contract by can be verified with public
+    /// Ethereum transactions data available on several blockchain browsers.
+    /// This is the only address from which `startCrowdsale` and `closeCrowdsale` can be invocated.
+    address public owner;
+
+    /// Admin account used to manage after crowdsale
+    address public admin;
+
+    mapping (address => bool) public isAccountsFrozenByDate;
+    mapping (address => uint) public accountsFrozenDate;
+
+    mapping (address => bool) public frozenAccounts;
+
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |                        SS Token Issue Plan - First Round                          |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |  Total Sale  |   Airdrop    |  Community Reserve  |  Team Reserve | System Reward |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   |     50%      |     10%      |         10%         |  Don't Issued | Don't Issued  |
+    ///   +-----------------------------------------------------------------------------------+
+    ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
+    ///   +-----------------------------------------------------------------------------------+
+    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
+
+    /// Max promotion
+    uint256 public constant MAX_PROMOTION_SS = 2000000;
+
+    /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
+    /// We'll adjust hard cap in Feb. 21.
+    uint256 public constant HARD_CAP = 2000 ether;
+
+    /// Base exchange rate is set to 1 ether = 20869 SS.
+    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
+    uint256 public constant BASE_RATE = 20869;
+
+    /// We split the entire crowdsale period into 2 phases.
+    /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
+    /// The first phase of crowdsale has a much higher bonus.
+    uint8[2] public bonusPercentages = [
+    20,
+    0
+    ];
+
+    /// Phases of crowdsale.
+    uint public constant NUM_OF_PHASE = 2;
+
+    /// Each phase contains exactly 76250 Ethereum blocks, which is roughly 15 days,
+    /// See https://www.ethereum.org/crowdsale#scheduling-a-call
+    uint public constant BLOCKS_PER_PHASE = 76250;
+
+    /// 1 ether == 1000 finney
+    /// Min contribution: 0.01 ether
+    uint256 public constant CONTRIBUTION_MIN = 10 finney;
+
+    /// Max contribution: 5 ether
+    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
+
+    /// Crowdsale start block number.
+    uint public saleStartAtBlock = 0;
+
+    /// Crowdsale ended block number.
+    uint public saleEndAtBlock = 0;
+
+    /// Unsold ss token whether isssued.
+    bool public unsoldTokenIssued = false;
+
+    /// Received ether
+    uint256 public totalEthReceived = 0;
+
+    /// Sold SS token
+    uint256 public soldSS = 0;
+
+    /// Issue event index starting from 0.
+    uint256 public issueIndex = 0;
+
+    /*
+     * EVENTS
+     */
+    /// Emitted only once after token sale starts.
+    event SaleStarted();
+
+    /// Emitted only once after token sale ended (all token issued).
+    event SaleEnded();
+
+    /// Emitted when a function is invocated by unauthorized addresses.
+    event InvalidCaller(address caller);
+
+    /// Emitted when a function is invocated without the specified preconditions.
+    /// This event will not come alone with an exception.
+    event InvalidState(bytes msg);
+
+    /// Emitted for each sucuessful token purchase.
+    event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
+
+    /// Emitted if the token sale succeeded.
+    event SaleSucceeded();
+
+    /// Emitted if the token sale failed.
+    /// When token sale failed, all Ether will be return to the original purchasing
+    /// address with a minor deduction of transaction fee（gas)
+    event SaleFailed();
 
     // This notifies clients about the amount to transfer
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -87,7 +193,7 @@ contract TokenERC20  {
     /**
      * Internal transfer, only can be called by this contract
      */
-    function _transfer(address _from, address _to, uint _value) internal {
+    function _transfer(address _from, address _to, uint _value) internal isNotFrozen {
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -194,124 +300,16 @@ contract TokenERC20  {
         return true;
     }
 
-}
-
-
-/// @title Sharder Protocol Token.
-/// For more information about this token sale, please visit https://sharder.org
-/// @author Ben - <xy@sharder.org>.
-contract SharderToken is TokenERC20 {
-    string public constant NAME = "Sharder Storage";
-    string public constant SYMBOL = "SS";
-    uint public constant DECIMALS = 18;
-
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |                        SS Token Issue Plan - First Round                          |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |  Total Sale  |   Airdrop    |  Community Reserve  |  Team Reserve | System Reward |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |     50%      |     10%      |         10%         |  Don't Issued | Don't Issued  |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
-    ///   +-----------------------------------------------------------------------------------+
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 300000000;
-
-    /// Max promotion
-    uint256 public constant MAX_PROMOTION_SS = 2000000;
-
-    /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
-    /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 2000 ether;
-
-    /// We split the entire token sale period into 2 phases.
-    /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
-    /// The first phase of crowdsale has a much higher bonus.
-    uint8[2] public bonusPercentages = [
-    20,
-    0
-    ];
-
-    /// Base exchange rate is set to 1 ETH = 32000 SS.
-    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 32000;
-
-    /// Phases of crowdsale.
-    uint public constant NUM_OF_PHASE = 2;
-
-    /// Each phase contains exactly 76250 Ethereum blocks, which is roughly 15 days,
-    /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    uint public constant BLOCKS_PER_PHASE = 76250;
-
-    /// 1 ether == 1000 finney
-    /// Min contribution: 0.01 ether
-    uint256 public constant CONTRIBUTION_MIN = 10 finney;
-
-    /// Max contribution: 5 ether
-    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
-
-
-    /// This is where we hold ether during this crowdsale. We will not transfer any ether
-    /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
-    /// This promise is not guanranteed by smart contract by can be verified with public
-    /// Ethereum transactions data available on several blockchain browsers.
-    /// This is the only address from which `startCrowdsale` and `closeCrowdsale` can be invocated.
-    ///
-    /// Note: this will be initialized during the contract deployment.
-    address public target;
-
-    /// Crowdsale start block number.
-    uint public saleStartAtBlock = 0;
-
-    /// Crowdsale ended block number.
-    uint public saleEndAtBlock = 0;
-
-    /// Unsold ss token whether isssued.
-    bool public unsoldTokenIssued = false;
-
-    /// Received ether
-    uint256 public totalEthReceived = 0;
-
-    /// Sold SS token
-    uint256 public soldSS = 0;
-
-    /// Issue event index starting from 0.
-    uint256 public issueIndex = 0;
-
-    /*
-     * EVENTS
-     */
-    /// Emitted only once after token sale starts.
-    event SaleStarted();
-
-    /// Emitted only once after token sale ended (all token issued).
-    event SaleEnded();
-
-    /// Emitted when a function is invocated by unauthorized addresses.
-    event InvalidCaller(address caller);
-
-    /// Emitted when a function is invocated without the specified preconditions.
-    /// This event will not come alone with an exception.
-    event InvalidState(bytes msg);
-
-    /// Emitted for each sucuessful token purchase.
-    event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
-
-    /// Emitted if the token sale succeeded.
-    event SaleSucceeded();
-
-    /// Emitted if the token sale failed.
-    /// When token sale failed, all Ether will be return to the original purchasing
-    /// address with a minor deduction of transaction fee（gas)
-    event SaleFailed();
-
-    /* This generates a public event on the blockchain that will notify clients */
-    event FrozenFunds(address target, bool frozen);
-
     /*
      * MODIFIERS
      */
     modifier onlyOwner {
-        require(msg.sender == target);
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier onlyAdmin {
+        require(msg.sender == owner || msg.sender == admin);
         _;
     }
 
@@ -330,27 +328,57 @@ contract SharderToken is TokenERC20 {
         _;
     }
 
+    modifier isNotFrozen {
+        require( frozenAccounts[msg.sender] != true && now > accountsFrozenDate[msg.sender] );
+        _;
+    }
+
     /**
      * CONSTRUCTOR
      *
      * @dev Initialize the Sharder Token
      */
     function SharderToken() public {
-        target = msg.sender;
+        owner = msg.sender;
+        admin = msg.sender;
         totalSupply = FIRST_ROUND_ISSUED_SS;
     }
 
     /*
      * PUBLIC FUNCTIONS
-     * @dev Start the crowdsale.
      */
+
+    ///@dev Set admin account.
+    function setAdmin(address _address) public onlyOwner {
+       admin=_address;
+    }
+
+    ///@dev Set frozen status of account.
+    function setAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin afterEnd {
+        frozenAccounts[_address] = _frozenStatus;
+    }
+
+    ///@dev Query account whether Frozen.
+    function queryAccountIsFrozen(address _address) afterEnd public constant returns (bool) {
+        return frozenAccounts[_address] || isAccountsFrozenByDate[_address];
+    }
+
+    /// @dev Set account to Frozen till the date.
+    function setAccountFrozenByDate(address _address, uint _date) public onlyAdmin afterEnd {
+        require(!isAccountsFrozenByDate[_address]);
+
+        accountsFrozenDate[_address] = _date;
+        isAccountsFrozenByDate[_address] = true;
+    }
+
+    /// @dev Start the crowdsale.
     function startCrowdsale(uint _firstblock) public onlyOwner beforeStart {
         require(_firstblock > block.number);
         saleStartAtBlock = _firstblock.add(12);
         SaleStarted();
     }
 
-    /// @dev Close the crowdsale and issue unsold tokens to `target` address.
+    /// @dev Close the crowdsale and issue unsold tokens to `owner` address.
     function closeCrowdsale() public onlyOwner afterEnd {
         require(!unsoldTokenIssued);
         saleEndAtBlock = block.number;
@@ -359,7 +387,7 @@ contract SharderToken is TokenERC20 {
     }
 
     /// @dev Returns the current price.
-    function price() public view returns (uint tokens) {
+    function price() public constant returns (uint tokens) {
         return computeTokenAmount(1 ether);
     }
 
@@ -388,7 +416,7 @@ contract SharderToken is TokenERC20 {
 
         Issue(issueIndex++,recipient,msg.value,tokens);
 
-        require(target.send(msg.value));
+        require(owner.send(msg.value));
     }
 
     /// @dev Issue token for reserve.
@@ -406,7 +434,7 @@ contract SharderToken is TokenERC20 {
     /// @dev Compute the amount of SS token that can be purchased.
     /// @param ethAmount Amount of Ether to purchase SS.
     /// @return Amount of SS token to purchase
-    function computeTokenAmount(uint ethAmount) internal view returns (uint tokens) {
+    function computeTokenAmount(uint ethAmount) internal constant returns (uint tokens) {
         uint phase = (block.number - saleStartAtBlock).div(BLOCKS_PER_PHASE);
 
         // A safe check
@@ -425,7 +453,7 @@ contract SharderToken is TokenERC20 {
         tokens = tokenBase.add(tokenBonus);
     }
 
-    /// @dev Issue unsold token to `target` address.
+    /// @dev Issue unsold token to `owner` address.
     function issueUnsoldToken() internal {
         if (unsoldTokenIssued) {
             InvalidState("Unsold token has been issued already");
@@ -434,9 +462,9 @@ contract SharderToken is TokenERC20 {
             require(soldSS > 0);
 
             uint256 unsoldSS = totalSupply.sub(soldSS).mul(1000000000000000000);
-            // Issue 'unsoldToken' to the target account.
-            balances[target] = balances[target].add(unsoldSS);
-            Issue(issueIndex++,target,0,unsoldSS);
+            // Issue 'unsoldToken' to the admin account.
+            balances[owner] = balances[owner].add(unsoldSS);
+            Issue(issueIndex++,owner,0,unsoldSS);
 
             unsoldTokenIssued = true;
         }
