@@ -74,8 +74,8 @@ contract SharderToken {
     uint public constant DECIMALS = 18;
     uint public totalSupply;
 
-    mapping (address => mapping (address => uint)) allowed;
-    mapping(address => uint) balances;
+    mapping (address => mapping (address => uint256))  public allowed;
+    mapping (address => uint) public balances;
 
     /// This is where we hold ether during this crowdsale. We will not transfer any ether
     /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
@@ -87,8 +87,8 @@ contract SharderToken {
     /// Admin account used to manage after crowdsale
     address public admin;
 
-    mapping (address => bool) public isAccountsFrozenByDate;
-    mapping (address => uint) public accountsFrozenDate;
+    mapping (address => bool) public accountLockup;
+    mapping (address => uint) public accountLockupTime;
 
     mapping (address => bool) public frozenAccounts;
 
@@ -102,10 +102,10 @@ contract SharderToken {
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
     ///   First Round supply 300,000,000 -> 3,000
-    uint256 public constant FIRST_ROUND_ISSUED_SS = 3000;
+    uint256 internal constant FIRST_ROUND_ISSUED_SS = 3000;
 
     /// Max promotion 2,000,000 -> 20
-    uint256 public constant MAX_PROMOTION_SS = 20;
+    uint256 internal constant MAX_PROMOTION_SS = 20;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
@@ -115,20 +115,20 @@ contract SharderToken {
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
     uint256 public constant BASE_RATE = 50;
 
-    /// We split the entire crowdsale period into 2 phases.
+    /// We split the crowdsale into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
-    /// The first phase of crowdsale has a much higher bonus.
-    uint8[2] public bonusPercentages = [
-    20,
+    /// The first phase of crowdsale has a bonus and the hardcap is MAX_PROMOTION_SS.
+    uint8[2] internal bonusPercentages = [
+    0,
     0
     ];
 
-    uint public constant NUM_OF_PHASE = 2;
+    uint internal constant NUM_OF_PHASE = 2;
 
     /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
     /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
-    uint public constant BLOCKS_PER_PHASE = 53;
+    uint internal constant BLOCKS_PER_PHASE = 200;
 
     /// 1 ether == 1000 finney
     /// Min contribution: 0.01 ether
@@ -147,13 +147,13 @@ contract SharderToken {
     bool public unsoldTokenIssued = false;
 
     /// Received ether
-    uint256 public totalEthReceived = 0;
+    uint256 internal totalEthReceived = 0;
 
     /// Sold SS token
     uint256 public soldSS = 0;
 
     /// Issue event index starting from 0.
-    uint256 public issueIndex = 0;
+    uint256 internal issueIndex = 0;
 
     /*
      * EVENTS
@@ -227,7 +227,7 @@ contract SharderToken {
     * @param _to address The address which you want to transfer to
     * @param _value uint the amout of tokens to be transfered
     */
-    function transferFrom(address _from, address _to, uint _value) public returns (bool success) {
+    function transferFrom(address _from, address _to, uint _value) internal returns (bool success) {
         require(_value <= allowed[_from][msg.sender]);     // Check allowance
         allowed[_from][msg.sender] -= _value;
         _transfer(_from, _to, _value);
@@ -244,19 +244,16 @@ contract SharderToken {
     }
 
     /**
-     * @dev Aprove the passed address to spend the specified amount of tokens on beahlf of msg.sender.
-     * @param _spender The address which will spend the funds.
-     * @param _value The amount of tokens to be spent.
+     * Set allowance for other address
+     * Allows `_spender` to spend no more than `_value` tokens in your behalf
+     *
+     * @param _spender The address authorized to spend
+     * @param _value the max amount they can spend
      */
-    function approve(address _spender, uint _value) public {
-        // To change the approve amount you first have to reduce the addresses`
-        //  allowance to zero by calling `approve(_spender, 0)` if it is not
-        //  already 0 to mitigate the race condition described here:
-        //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-        require((_value != 0) && (allowed[msg.sender][_spender] != 0));
-
+    function approve(address _spender, uint256 _value) public isNotFrozen returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         Approval(msg.sender, _spender, _value);
+        return true;
     }
 
     /**
@@ -265,7 +262,7 @@ contract SharderToken {
      * @param _spender address The address which will spend the funds.
      * @return A uint specifing the amount of tokens still avaible for the spender.
      */
-    function allowance(address _owner, address _spender) public constant returns (uint remaining) {
+    function allowance(address _owner, address _spender) internal constant returns (uint remaining) {
         return allowed[_owner][_spender];
     }
 
@@ -291,7 +288,7 @@ contract SharderToken {
      * @param _from the address of the sender
      * @param _value the amount of money to burn
      */
-    function burnFrom(address _from, uint256 _value) public returns (bool success) {
+    function burnFrom(address _from, uint256 _value) internal returns (bool success) {
         require(balances[_from] >= _value);                /// Check if the targeted balance is enough
         require(_value <= allowed[_from][msg.sender]);    /// Check allowance
         balances[_from] -= _value;                        /// Subtract from the targeted balance
@@ -330,7 +327,7 @@ contract SharderToken {
     }
 
     modifier isNotFrozen {
-        require( frozenAccounts[msg.sender] != true && now > accountsFrozenDate[msg.sender] );
+        require( frozenAccounts[msg.sender] != true && now > accountLockupTime[msg.sender] );
         _;
     }
 
@@ -355,27 +352,26 @@ contract SharderToken {
     }
 
     ///@dev Set frozen status of account.
-    function setAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin afterEnd {
+    function setAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
+        require(unsoldTokenIssued);
         frozenAccounts[_address] = _frozenStatus;
     }
 
-    ///@dev Query account whether Frozen.
-    function queryAccountIsFrozen(address _address) afterEnd public constant returns (bool) {
-        return frozenAccounts[_address] || isAccountsFrozenByDate[_address];
-    }
+    /// @dev Lockup account till the date.
+    /// 1 year = 31536000 seconds
+    /// 0.5 year = 15768000 seconds
+    function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
+        require(!accountLockup[_address]);
 
-    /// @dev Set account to Frozen till the date.
-    function setAccountFrozenByDate(address _address, uint _date) public onlyAdmin afterEnd {
-        require(!isAccountsFrozenByDate[_address]);
-
-        accountsFrozenDate[_address] = _date;
-        isAccountsFrozenByDate[_address] = true;
+        // frozen time = now + _frozenSeconds
+        accountLockupTime[_address] = now + _lockupSeconds;
+        accountLockup[_address] = true;
     }
 
     /// @dev Start the crowdsale.
     function startCrowdsale(uint _firstblock) public onlyOwner beforeStart {
         require(_firstblock > block.number);
-        saleStartAtBlock = _firstblock.add(12);
+        saleStartAtBlock = _firstblock;
         SaleStarted();
     }
 
