@@ -69,8 +69,8 @@ library SafeMath {
 */
 contract SharderToken {
     using SafeMath for uint;
-    string public constant NAME = "Sharder Storage Tester";
-    string public constant SYMBOL = "SST";
+    string public constant NAME = "Sharder Storage";
+    string public constant SYMBOL = "SS";
     uint public constant DECIMALS = 18;
     uint public totalSupply;
 
@@ -89,7 +89,6 @@ contract SharderToken {
 
     mapping (address => bool) public accountLockup;
     mapping (address => uint) public accountLockupTime;
-
     mapping (address => bool) public frozenAccounts;
 
     ///   +-----------------------------------------------------------------------------------+
@@ -110,14 +109,14 @@ contract SharderToken {
     uint256 public constant SOFT_CAP = 1 ether;
 
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 5000000;
+    uint256 public constant BASE_RATE = 20873;
 
     /// 1 ether == 1000 finney
-    /// Min contribution: 0.01 ether
-    uint256 public constant CONTRIBUTION_MIN = 10 finney;
+    /// Min contribution: 0.1 ether
+    uint256 public constant CONTRIBUTION_MIN = 100 finney;
 
-    /// Max contribution: 2 ether
-    uint256 public constant CONTRIBUTION_MAX = 2000 finney;
+    /// Max contribution: 3 ether
+    uint256 public constant CONTRIBUTION_MAX = 3000 finney;
 
     /// Sold SS tokens in crowdsale
     uint256 public soldSS = 0;
@@ -135,10 +134,9 @@ contract SharderToken {
 
     uint internal constant NUM_OF_PHASE = 2;
 
-    /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
+    /// Each phase contains exactly 78776 Ethereum blocks, which is roughly 15 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
-    uint internal constant BLOCKS_PER_PHASE = 2500;
+    uint internal constant BLOCKS_PER_PHASE = 78776;
 
     /// Crowdsale start block number.
     uint public saleStartAtBlock = 0;
@@ -268,7 +266,6 @@ contract SharderToken {
     function allowance(address _owner, address _spender) internal constant returns (uint remaining) {
         return allowed[_owner][_spender];
     }
-
 
     /**
        * Destroy tokens
