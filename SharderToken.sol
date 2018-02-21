@@ -381,9 +381,14 @@ contract SharderToken {
     /// @dev Close the crowdsale and issue unsold tokens to `owner` address.
     function closeCrowdsale() public onlyOwner afterEnd {
         require(!unsoldTokenIssued);
-        saleEndAtBlock = block.number;
-        issueUnsoldToken();
-        SaleSucceeded();
+
+        if (softCapReached()) {
+            saleEndAtBlock = block.number;
+            issueUnsoldToken();
+            SaleSucceeded();
+        } else {
+            SaleFailed();
+        }
     }
 
     /// @dev goal achieved ahead of time
@@ -409,18 +414,15 @@ contract SharderToken {
     function issueToken(address recipient) public payable inProgress {
         // Personal cap check
         require(balances[recipient].div(BASE_RATE).add(msg.value) <= CONTRIBUTION_MAX);
-
         // Contribution cap check
         require(CONTRIBUTION_MIN <= msg.value && msg.value <= CONTRIBUTION_MAX);
 
         uint tokens = computeTokenAmount(msg.value);
 
         totalEthReceived = totalEthReceived.add(msg.value);
-
         soldSS = soldSS.add(tokens);
 
         balances[recipient] = balances[recipient].add(tokens);
-
         Issue(issueIndex++,recipient,msg.value,tokens);
 
         require(owner.send(msg.value));
