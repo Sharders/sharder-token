@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.18;
 
 /**
  * Math operations with safety checks
@@ -69,8 +69,8 @@ library SafeMath {
 */
 contract SharderToken {
     using SafeMath for uint;
-    string public constant NAME = "Sharder Storage";
-    string public constant SYMBOL = "SS";
+    string public constant NAME = "Sharder Storage Tester";
+    string public constant SYMBOL = "SST";
     uint public constant DECIMALS = 18;
     uint public totalSupply;
 
@@ -101,17 +101,26 @@ contract SharderToken {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 internal constant FIRST_ROUND_ISSUED_SS = 300000000;
-
-    /// Max promotion 0
-    uint256 internal constant MAX_PROMOTION_SS = 0;
+    uint256 internal constant FIRST_ROUND_ISSUED_SS = 350000000000000000000000000;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 1500 ether;
+    uint256 public constant HARD_CAP = 4 ether;
+
+    uint256 public constant SOFT_CAP = 1 ether;
 
     /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 20521;
+    uint256 public constant BASE_RATE = 5000000;
+
+    /// 1 ether == 1000 finney
+    /// Min contribution: 0.01 ether
+    uint256 public constant CONTRIBUTION_MIN = 10 finney;
+
+    /// Max contribution: 2 ether
+    uint256 public constant CONTRIBUTION_MAX = 2000 finney;
+
+    /// Sold SS tokens in crowdsale
+    uint256 public soldSS = 0;
 
     /// We split the crowdsale into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
@@ -121,18 +130,15 @@ contract SharderToken {
     0
     ];
 
+    /// No more promotion
+    uint256 internal constant MAX_PROMOTION_SS = 0;
+
     uint internal constant NUM_OF_PHASE = 2;
 
-    /// Each phase contains exactly 78776 Ethereum blocks, which is roughly 15 days,
+    /// Each phase contains exactly 15250 Ethereum blocks, which is roughly 3 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    uint internal constant BLOCKS_PER_PHASE = 78776;
-
-    /// 1 ether == 1000 finney
-    /// Min contribution: 0.1 ether
-    uint256 public constant CONTRIBUTION_MIN = 100 finney;
-
-    /// Max contribution: 5 ether
-    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
+    /// Test network set to 0.25 hour = 53 blocks, total time is 1 hour.
+    uint internal constant BLOCKS_PER_PHASE = 2500;
 
     /// Crowdsale start block number.
     uint public saleStartAtBlock = 0;
@@ -141,13 +147,13 @@ contract SharderToken {
     uint public saleEndAtBlock = 0;
 
     /// Unsold ss token whether isssued.
-    bool public unsoldTokenIssued = false;
+    bool internal unsoldTokenIssued = false;
+
+    /// Goal whether achieved
+    bool internal isGoalAchieved = false;
 
     /// Received ether
     uint256 internal totalEthReceived = 0;
-
-    /// Sold SS token
-    uint256 public soldSS = 0;
 
     /// Issue event index starting from 0.
     uint256 internal issueIndex = 0;
@@ -212,44 +218,44 @@ contract SharderToken {
     /**
     * @dev transfer token for a specified address
     * @param _to The address to transfer to.
-    * @param _value The amount to be transferred.
+    * @param _transferTokensWithDecimal The amount to be transferred.
     */
-    function transfer(address _to, uint _value) public {
-        _transfer(msg.sender, _to, _value);
+    function transfer(address _to, uint _transferTokensWithDecimal) public {
+        _transfer(msg.sender, _to, _transferTokensWithDecimal);
     }
 
     /**
     * @dev Transfer tokens from one address to another
     * @param _from address The address which you want to send tokens from
     * @param _to address The address which you want to transfer to
-    * @param _value uint the amout of tokens to be transfered
+    * @param _approveTokensWithDecimal uint the amout of tokens to be transfered
     */
-    function transferFrom(address _from, address _to, uint _value) internal returns (bool success) {
-        require(_value <= allowed[_from][msg.sender]);     // Check allowance
-        allowed[_from][msg.sender] -= _value;
-        _transfer(_from, _to, _value);
+    function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public returns (bool success) {
+        require(_transferTokensWithDecimal <= allowed[_from][msg.sender]);     // Check allowance
+        allowed[_from][msg.sender] -= _transferTokensWithDecimal;
+        _transfer(_from, _to, _transferTokensWithDecimal);
         return true;
     }
 
     /**
     * @dev Gets the balance of the specified address.
-    * @param _owner The address to query the the balance of.
+    * @param _addr The address to query the the balance of.
     * @return An uint representing the amount owned by the passed address.
     */
-    function balanceOf(address _owner) public constant returns (uint balance) {
-        return balances[_owner];
+    function balanceOf(address _addr) internal constant returns (uint balance) {
+        return balances[_addr];
     }
 
     /**
      * Set allowance for other address
-     * Allows `_spender` to spend no more than `_value` tokens in your behalf
+     * Allows `_spender` to spend no more than `_approveTokensWithDecimal` tokens in your behalf
      *
      * @param _spender The address authorized to spend
-     * @param _value the max amount they can spend
+     * @param _approveTokensWithDecimal the max amount they can spend
      */
-    function approve(address _spender, uint256 _value) public isNotFrozen returns (bool success) {
-        allowed[msg.sender][_spender] = _value;
-        Approval(msg.sender, _spender, _value);
+    function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen returns (bool success) {
+        allowed[msg.sender][_spender] = _approveTokensWithDecimal;
+        Approval(msg.sender, _spender, _approveTokensWithDecimal);
         return true;
     }
 
@@ -268,13 +274,13 @@ contract SharderToken {
        * Destroy tokens
        * Remove `_value` tokens from the system irreversibly
        *
-       * @param _value the amount of money to burn
+       * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
        */
-    function burn(uint256 _value) public returns (bool success) {
-        require(balances[msg.sender] >= _value);   /// Check if the sender has enough
-        balances[msg.sender] -= _value;            /// Subtract from the sender
-        totalSupply -= _value;                      /// Updates totalSupply
-        Burn(msg.sender, _value);
+    function burn(uint256 _burnedTokensWithDecimal) public returns (bool success) {
+        require(balances[msg.sender] >= _burnedTokensWithDecimal);   /// Check if the sender has enough
+        balances[msg.sender] -= _burnedTokensWithDecimal;            /// Subtract from the sender
+        totalSupply -= _burnedTokensWithDecimal;                      /// Updates totalSupply
+        Burn(msg.sender, _burnedTokensWithDecimal);
         return true;
     }
 
@@ -283,15 +289,15 @@ contract SharderToken {
      * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
      *
      * @param _from the address of the sender
-     * @param _value the amount of money to burn
+     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
      */
-    function burnFrom(address _from, uint256 _value) internal returns (bool success) {
-        require(balances[_from] >= _value);                /// Check if the targeted balance is enough
-        require(_value <= allowed[_from][msg.sender]);    /// Check allowance
-        balances[_from] -= _value;                        /// Subtract from the targeted balance
-        allowed[_from][msg.sender] -= _value;             /// Subtract from the sender's allowance
-        totalSupply -= _value;                            /// Update totalSupply
-        Burn(_from, _value);
+    function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public returns (bool success) {
+        require(balances[_from] >= _burnedTokensWithDecimal);                /// Check if the targeted balance is enough
+        require(_burnedTokensWithDecimal <= allowed[_from][msg.sender]);    /// Check allowance
+        balances[_from] -= _burnedTokensWithDecimal;                        /// Subtract from the targeted balance
+        allowed[_from][msg.sender] -= _burnedTokensWithDecimal;             /// Subtract from the sender's allowance
+        totalSupply -= _burnedTokensWithDecimal;                            /// Update totalSupply
+        Burn(_from, _burnedTokensWithDecimal);
         return true;
     }
 
@@ -354,30 +360,42 @@ contract SharderToken {
         frozenAccounts[_address] = _frozenStatus;
     }
 
-    /// @dev Lockup account till the date.
+    /// @dev Lockup account till the date. Can't lockup again when this account locked already.
     /// 1 year = 31536000 seconds
     /// 0.5 year = 15768000 seconds
     function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
-        require(!accountLockup[_address]);
+        require((accountLockup[_address] && now > accountLockupTime[msg.sender]) || !accountLockup[_address]);
 
-        // frozen time = now + _frozenSeconds
+        // frozen time = now + _lockupSeconds
         accountLockupTime[_address] = now + _lockupSeconds;
         accountLockup[_address] = true;
     }
 
     /// @dev Start the crowdsale.
-    function startCrowdsale(uint _firstblock) public onlyOwner beforeStart {
-        require(_firstblock > block.number);
-        saleStartAtBlock = _firstblock;
+    function startCrowdsale(uint _saleStartAtBlock) public onlyOwner beforeStart {
+        require(_saleStartAtBlock > block.number);
+        saleStartAtBlock = _saleStartAtBlock;
         SaleStarted();
     }
 
     /// @dev Close the crowdsale and issue unsold tokens to `owner` address.
     function closeCrowdsale() public onlyOwner afterEnd {
         require(!unsoldTokenIssued);
-        saleEndAtBlock = block.number;
-        issueUnsoldToken();
-        SaleSucceeded();
+
+        if (softCapReached()) {
+            saleEndAtBlock = block.number;
+            issueUnsoldToken();
+            SaleSucceeded();
+        } else {
+            SaleFailed();
+        }
+    }
+
+    /// @dev goal achieved ahead of time
+    function goalAchieved() public onlyOwner {
+        require(!isGoalAchieved && softCapReached());
+        isGoalAchieved = true;
+        closeCrowdsale();
     }
 
     /// @dev Returns the current price.
@@ -396,18 +414,15 @@ contract SharderToken {
     function issueToken(address recipient) public payable inProgress {
         // Personal cap check
         require(balances[recipient].div(BASE_RATE).add(msg.value) <= CONTRIBUTION_MAX);
-
         // Contribution cap check
-        require(CONTRIBUTION_MIN <=  msg.value && msg.value <= CONTRIBUTION_MAX);
+        require(CONTRIBUTION_MIN <= msg.value && msg.value <= CONTRIBUTION_MAX);
 
         uint tokens = computeTokenAmount(msg.value);
 
         totalEthReceived = totalEthReceived.add(msg.value);
-
-        soldSS = soldSS.add(tokens.div(1000000000000000000));
+        soldSS = soldSS.add(tokens);
 
         balances[recipient] = balances[recipient].add(tokens);
-
         Issue(issueIndex++,recipient,msg.value,tokens);
 
         require(owner.send(msg.value));
@@ -415,11 +430,11 @@ contract SharderToken {
 
     /// @dev Issue token for reserve.
     /// @param recipient Address that newly issued reserve token will be sent to.
-    function issueReserveToken(address recipient, uint256 issueTokenAmount) onlyOwner public {
-        uint256 ssAmount = issueTokenAmount.mul(1000000000000000000);
-        balances[recipient] = balances[recipient].add(ssAmount);
-        totalSupply = totalSupply.add(issueTokenAmount);
-        Issue(issueIndex++,recipient,0,ssAmount);
+    /// @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+    function issueReserveToken(address recipient, uint256 _issueTokensWithDecimal) onlyOwner public {
+        balances[recipient] = balances[recipient].add(_issueTokensWithDecimal);
+        totalSupply = totalSupply.add(_issueTokensWithDecimal);
+        Issue(issueIndex++,recipient,0,_issueTokensWithDecimal);
     }
 
     /*
@@ -455,7 +470,7 @@ contract SharderToken {
             // Add another safe guard
             require(soldSS > 0);
 
-            uint256 unsoldSS = totalSupply.sub(soldSS).mul(1000000000000000000);
+            uint256 unsoldSS = totalSupply.sub(soldSS);
             // Issue 'unsoldToken' to the admin account.
             balances[owner] = balances[owner].add(unsoldSS);
             Issue(issueIndex++,owner,0,unsoldSS);
@@ -470,18 +485,24 @@ contract SharderToken {
     }
 
     /// @return true if sale has ended, false otherwise.
+    /// Sale ended in: a) end time of crowdsale reached, b) hard cap reached, c) goal achieved ahead of time
     function saleEnded() public constant returns (bool) {
-        return saleStartAtBlock > 0 && (saleDue() || hardCapReached());
+        return saleStartAtBlock > 0 && (saleDue() || hardCapReached() || isGoalAchieved);
     }
 
     /// @return true if sale is due when the last phase is finished.
-    function saleDue() public constant returns (bool) {
+    function saleDue() internal constant returns (bool) {
         return block.number >= saleStartAtBlock + BLOCKS_PER_PHASE * NUM_OF_PHASE;
     }
 
     /// @return true if the hard cap is reached.
-    function hardCapReached() public constant returns (bool) {
+    function hardCapReached() internal constant returns (bool) {
         return totalEthReceived >= HARD_CAP;
+    }
+
+    /// @return true if the soft cap is reached.
+    function softCapReached() internal constant returns (bool) {
+        return totalEthReceived >= SOFT_CAP;
     }
 }
 
