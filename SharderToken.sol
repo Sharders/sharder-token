@@ -105,7 +105,7 @@ contract SharderToken {
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
     uint256 public constant HARD_CAP = 1500 ether;
 
-    /// It will be refuned if this crowdsale can't acheive the soft cap, all ether will be refuned.
+    /// It will be refuned if crowdsale can't acheive the soft cap, all ethers will be refuned.
     uint256 public constant SOFT_CAP = 1000 ether;
 
     /// 1 ether exchange rate
@@ -123,17 +123,13 @@ contract SharderToken {
     uint256 public soldSS = 0;
 
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
-    /// The first phase of crowdsale has a bonus and the hardcap is MAX_PROMOTION_SS.
     uint8[2] internal bonusPercentages = [
     0,
     0
     ];
 
-    /// No more promotion
     uint256 internal constant MAX_PROMOTION_SS = 0;
-
     uint internal constant NUM_OF_PHASE = 2;
-
     /// Each phase contains exactly 78776 Ethereum blocks, which is roughly 15 days,
     /// See https://www.ethereum.org/crowdsale#scheduling-a-call
     uint internal constant BLOCKS_PER_PHASE = 78776;
