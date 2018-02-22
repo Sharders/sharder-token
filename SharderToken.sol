@@ -103,25 +103,25 @@ contract SharderToken {
     uint256 internal constant FIRST_ROUND_ISSUED_SS = 350000000000000000000000000;
 
     /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
-    /// We'll adjust hard cap in Feb. 21.
-    uint256 public constant HARD_CAP = 4 ether;
+    uint256 public constant HARD_CAP = 1500 ether;
 
-    uint256 public constant SOFT_CAP = 1 ether;
+    /// It will be refuned if this crowdsale can't acheive the soft cap, all ether will be refuned.
+    uint256 public constant SOFT_CAP = 1000 ether;
 
-    /// We'll adjust rate base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 20873;
+    /// 1 ether exchange rate
+    /// base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
+    uint256 public constant BASE_RATE = 20719;
 
     /// 1 ether == 1000 finney
     /// Min contribution: 0.1 ether
     uint256 public constant CONTRIBUTION_MIN = 100 finney;
 
-    /// Max contribution: 3 ether
-    uint256 public constant CONTRIBUTION_MAX = 3000 finney;
+    /// Max contribution: 5 ether
+    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
 
     /// Sold SS tokens in crowdsale
     uint256 public soldSS = 0;
 
-    /// We split the crowdsale into 2 phases.
     /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
     /// The first phase of crowdsale has a bonus and the hardcap is MAX_PROMOTION_SS.
     uint8[2] internal bonusPercentages = [
