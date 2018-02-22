@@ -129,9 +129,7 @@ contract SharderToken {
 
     uint256 internal constant MAX_PROMOTION_SS = 0;
     uint internal constant NUM_OF_PHASE = 2;
-    /// Each phase contains exactly 78776 Ethereum blocks, which is roughly 15 days,
-    /// See https://www.ethereum.org/crowdsale#scheduling-a-call
-    uint internal constant BLOCKS_PER_PHASE = 78776;
+    uint internal constant BLOCKS_PER_PHASE = 86400;
 
     /// Crowdsale start block number.
     uint public saleStartAtBlock = 0;
