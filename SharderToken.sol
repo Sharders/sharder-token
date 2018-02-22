@@ -122,7 +122,6 @@ contract SharderToken {
     /// Sold SS tokens in crowdsale
     uint256 public soldSS = 0;
 
-    /// The real price for phase is `(1 + bonusPercentages[i]/100.0) * BASE_RATE`.
     uint8[2] internal bonusPercentages = [
     0,
     0
@@ -236,7 +235,7 @@ contract SharderToken {
     * @param _owner The address to query the the balance of.
     * @return An uint representing the amount owned by the passed address.
     */
-    function balanceOf(address _owner) internal constant returns (uint balance) {
+    function balanceOf(address _owner) public constant returns (uint balance) {
         return balances[_owner];
     }
 
