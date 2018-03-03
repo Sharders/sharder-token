@@ -18,7 +18,7 @@
     b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and
     legibility of the Sharder smart contract coding.
     c) Adding the broadcast event 'Frozen'.
-    d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention.
+    d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention. Adjust format of input paramters.
     e) The global parameter is added to our smart contact in order to avoid that the exchanges trade Sharder tokens
     before officials partnering with Sharder.
     f) Add SSHolders to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
@@ -101,37 +101,37 @@ contract SharderToken {
     mapping (address => uint) public accountLockupTime;
     mapping (address => bool) public frozenAccounts;
 
-    ///   +--------------------------------------------------------------+
-    ///   |                 SS(Sharder) Token Issue Plan                 |
-    ///   +--------------------------------------------------------------+
-    ///   |                    First Round(Crowdsale)                    |
-    ///   +--------------------------------------------------------------+
-    ///   |     Total Sale    |      Airdrop      |  Community Reserve   |
-    ///   +--------------------------------------------------------------+
-    ///   |       50%         |        10%        |         10%          |
-    ///   +--------------------------------------------------------------+
-    ///   |     250,000,000   |     50,000,000    |     50,000,000       |
-    ///   +--------------------------------------------------------------+
-    ///   | Team Reserve(10% - 50,000,000 SS): Realse in 3 years period  |
-    ///   +--------------------------------------------------------------+
-    ///   | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
-    ///   +--------------------------------------------------------------+
+    /// +--------------------------------------------------------------+
+    /// |                 SS(Sharder) Token Issue Plan                 |
+    /// +--------------------------------------------------------------+
+    /// |                    First Round(Crowdsale)                    |
+    /// +--------------------------------------------------------------+
+    /// |     Total Sale    |      Airdrop      |  Community Reserve   |
+    /// +--------------------------------------------------------------+
+    /// |       50%         |        10%        |         10%          |
+    /// +--------------------------------------------------------------+
+    /// |     250,000,000   |     50,000,000    |     50,000,000       |
+    /// +--------------------------------------------------------------+
+    /// | Team Reserve(10% - 50,000,000 SS): Issue in 3 years period   |
+    /// +--------------------------------------------------------------+
+    /// | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
+    /// +--------------------------------------------------------------+
     uint256 internal constant CROWDSALE_ISSUED_SS = 350000000000000000000000000;
 
     ///First round tokens whether isssued.
     bool internal firstRoundTokenIssued = false;
 
+    /// Contract pause state
+    bool public paused = false;
+
     /// Issue event index starting from 0.
     uint256 internal issueIndex = 0;
-
-    /// Emitted when a function is invocated by unauthorized addresses.
-    event InvalidCaller(address caller);
 
     /// Emitted when a function is invocated without the specified preconditions.
     /// This event will not come alone with an exception.
     event InvalidState(bytes msg);
 
-    /// Emitted for each sucuessful token purchase.
+    /// This notifies clients about the token issued.
     event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
 
     // This notifies clients about the amount to transfer
@@ -143,13 +143,57 @@ contract SharderToken {
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
 
-    /* This generates a public event on the blockchain that will notify clients */
+    /* This notifies clients about the account frozen */
     event FrozenFunds(address target, bool frozen);
+
+    /* This notifies clients about the pasuse in  */
+    event Pause();
+
+    /* This notifies clients about the unpasuse */
+    event Unpause();
+
+
+    /*
+     * MODIFIERS
+     */
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
+    }
+
+    modifier onlyAdmin {
+        require(msg.sender == owner || msg.sender == admin);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when account not frozen.
+     */
+    modifier isNotFrozen {
+        require(frozenAccounts[msg.sender] != true && now > accountLockupTime[msg.sender]);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     */
+    modifier isNotPaused() {
+        require(!paused);
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is paused.
+     */
+    modifier isPaused() {
+        require(paused);
+        _;
+    }
 
     /**
      * Internal transfer, only can be called by this contract
      */
-    function _transfer(address _from, address _to, uint _value) internal isNotFrozen {
+    function _transfer(address _from, address _to, uint _value) internal isNotFrozen isNotPaused {
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -252,22 +296,14 @@ contract SharderToken {
         return true;
     }
 
-    /*
-     * MODIFIERS
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @param _newOwner The address to transfer ownership to.
      */
-    modifier onlyOwner {
-        require(msg.sender == owner);
-        _;
-    }
-
-    modifier onlyAdmin {
-        require(msg.sender == owner || msg.sender == admin);
-        _;
-    }
-
-    modifier isNotFrozen {
-        require( frozenAccounts[msg.sender] != true && now > accountLockupTime[msg.sender] );
-        _;
+    function transferOwnership(address _newOwner) onlyOwner {
+        require(_newOwner != address(0));
+        owner = _newOwner;
     }
 
     /**
@@ -278,8 +314,8 @@ contract SharderToken {
         owner = msg.sender;
         admin = msg.sender;
         totalSupply = FIRST_ROUND_ISSUED_SS;
-        issueFirstRoundToken();
         // Issue first round tokens
+        issueFirstRoundToken();
     }
 
     /*
@@ -288,21 +324,6 @@ contract SharderToken {
     ///@dev Set admin account to manage contract.
     function setAdmin(address _address) public onlyOwner {
         admin = _address;
-    }
-
-    ///@dev Frozen or unfrozen account.
-    function changeAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
-        frozenAccounts[_address] = _frozenStatus;
-    }
-
-    /// @dev Lockup account till the date. Can't lock-up again when this account locked already.
-    /// 1 year = 31536000 seconds
-    /// 0.5 year = 15768000 seconds
-    function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
-        require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
-        // Frozen
-        accountLockupTime[_address] = now + _lockupSeconds;
-        accountLockup[_address] = true;
     }
 
     /// @dev Issue first round tokens to `owner` address.
@@ -323,6 +344,38 @@ contract SharderToken {
         totalSupply = totalSupply.add(_issueTokensWithDecimal);
         Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
     }
+
+    ///@dev Frozen or unfrozen account.
+    function changeAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
+        frozenAccounts[_address] = _frozenStatus;
+    }
+
+    /// @dev Lockup account till the date. Can't lock-up again when this account locked already.
+    /// 1 year = 31536000 seconds
+    /// 0.5 year = 15768000 seconds
+    function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
+        require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
+        // Frozen
+        accountLockupTime[_address] = now + _lockupSeconds;
+        accountLockup[_address] = true;
+    }
+
+    /**
+      * @dev called by the owner to pause, triggers stopped state
+      */
+    function pause() onlyAdmin isNotPaused public {
+        paused = true;
+        Pause();
+    }
+
+    /**
+     * @dev called by the owner to unpause, returns to normal state
+     */
+    function unpause() onlyAdmin isPaused public {
+        paused = false;
+        Unpause();
+    }
+
 
     /// @dev This default function reject anyone to purchase the SS(Sharder) token.
     function() public payable {
