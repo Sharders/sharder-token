@@ -12,6 +12,16 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
+
+  We upgrade the Sharder Token to v2.0:
+    a) adding the emergency transfer functionality for owner;
+    b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and legibility of the Sharder smart contract coding;
+    c) Adding the broadcast event: Fronzen;
+    d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention.
+
+
+  Old Sharder token you can found at: https://etherscan.io/address/0xb15fe5a123e647ba594cea7a1e648646f95eb4aa
+  This contract include all crowdsale infomations.
 */
 pragma solidity ^0.4.18;
 
@@ -61,30 +71,29 @@ library SafeMath {
 }
 
 /**
-* @title Sharder Protocol Token.
-* For more information about this token sale, please visit https://sharder.org
+* @title Sharder Token v2.0.
+* SS(Sharder) is upgrade from SS(Sharder Storage), you can found the source code at sharder-storage-token branch.
 * @author Ben - <xy@sharder.org>.
 * @dev https://github.com/ethereum/EIPs/issues/20
 * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
 */
 contract SharderToken {
     using SafeMath for uint;
-    string public constant NAME = "Sharder Storage";
-    string public constant SYMBOL = "SS";
-    uint public constant DECIMALS = 18;
+    string public constant name = "Sharder";
+
+    string public constant symbol = "SS";
+
+    uint public constant decimals = 18;
     uint public totalSupply;
 
     mapping (address => mapping (address => uint256))  public allowed;
-    mapping (address => uint) public balances;
 
-    /// This is where we hold ether during this crowdsale. We will not transfer any ether
-    /// out of this address before we invocate the `closeCrowdsale` function to finalize the crowdsale.
-    /// This promise is not guanranteed by smart contract by can be verified with public
-    /// Ethereum transactions data available on several blockchain browsers.
-    /// This is the only address from which `startCrowdsale` and `closeCrowdsale` can be invocated.
+    mapping (address => uint) internal balances;
+
+    /// The owner of contract
     address public owner;
 
-    /// Admin account used to manage after crowdsale
+    /// The admin account of contract
     address public admin;
 
     mapping (address => bool) public accountLockup;
@@ -100,63 +109,13 @@ contract SharderToken {
     ///   +-----------------------------------------------------------------------------------+
     ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
     ///   +-----------------------------------------------------------------------------------+
-    uint256 internal constant FIRST_ROUND_ISSUED_SS = 350000000000000000000000000;
+    uint256 internal constant CROWDSALE_ISSUED_SS = 350000000000000000000000000;
 
-    /// Maximum amount of fund to be raised, the sale ends on reaching this amount.
-    uint256 public constant HARD_CAP = 1500 ether;
-
-    /// It will be refuned if crowdsale can't acheive the soft cap, all ethers will be refuned.
-    uint256 public constant SOFT_CAP = 1000 ether;
-
-    /// 1 ether exchange rate
-    /// base the 7-day average close price (Feb.15 through Feb.21, 2018) on CoinMarketCap.com at Feb.21.
-    uint256 public constant BASE_RATE = 20719;
-
-    /// 1 ether == 1000 finney
-    /// Min contribution: 0.1 ether
-    uint256 public constant CONTRIBUTION_MIN = 100 finney;
-
-    /// Max contribution: 5 ether
-    uint256 public constant CONTRIBUTION_MAX = 5000 finney;
-
-    /// Sold SS tokens in crowdsale
-    uint256 public soldSS = 0;
-
-    uint8[2] internal bonusPercentages = [
-    0,
-    0
-    ];
-
-    uint256 internal constant MAX_PROMOTION_SS = 0;
-    uint internal constant NUM_OF_PHASE = 2;
-    uint internal constant BLOCKS_PER_PHASE = 86400;
-
-    /// Crowdsale start block number.
-    uint public saleStartAtBlock = 0;
-
-    /// Crowdsale ended block number.
-    uint public saleEndAtBlock = 0;
-
-    /// Unsold ss token whether isssued.
-    bool internal unsoldTokenIssued = false;
-
-    /// Goal whether achieved
-    bool internal isGoalAchieved = false;
-
-    /// Received ether
-    uint256 internal totalEthReceived = 0;
+    ///First round tokens whether isssued.
+    bool internal firstRoundTokenIssued = false;
 
     /// Issue event index starting from 0.
     uint256 internal issueIndex = 0;
-
-    /*
-     * EVENTS
-     */
-    /// Emitted only once after token sale starts.
-    event SaleStarted();
-
-    /// Emitted only once after token sale ended (all token issued).
-    event SaleEnded();
 
     /// Emitted when a function is invocated by unauthorized addresses.
     event InvalidCaller(address caller);
@@ -167,14 +126,6 @@ contract SharderToken {
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
-
-    /// Emitted if the token sale succeeded.
-    event SaleSucceeded();
-
-    /// Emitted if the token sale failed.
-    /// When token sale failed, all Ether will be return to the original purchasing
-    /// address with a minor deduction of transaction fee（gas)
-    event SaleFailed();
 
     // This notifies clients about the amount to transfer
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -304,21 +255,6 @@ contract SharderToken {
         _;
     }
 
-    modifier beforeStart {
-        require(!saleStarted());
-        _;
-    }
-
-    modifier inProgress {
-        require(saleStarted() && !saleEnded());
-        _;
-    }
-
-    modifier afterEnd {
-        require(saleEnded());
-        _;
-    }
-
     modifier isNotFrozen {
         require( frozenAccounts[msg.sender] != true && now > accountLockupTime[msg.sender] );
         _;
@@ -326,22 +262,22 @@ contract SharderToken {
 
     /**
      * CONSTRUCTOR
-     *
      * @dev Initialize the Sharder Token
      */
     function SharderToken() public {
         owner = msg.sender;
         admin = msg.sender;
         totalSupply = FIRST_ROUND_ISSUED_SS;
+        issueFirstRoundToken();
+        // Issue first round tokens
     }
 
     /*
      * PUBLIC FUNCTIONS
      */
-
-    ///@dev Set admin account.
+    ///@dev Set admin account to manage contract.
     function setAdmin(address _address) public onlyOwner {
-       admin=_address;
+        admin = _address;
     }
 
     ///@dev Set frozen status of account.
@@ -361,61 +297,15 @@ contract SharderToken {
         accountLockup[_address] = true;
     }
 
-    /// @dev Start the crowdsale.
-    function startCrowdsale(uint _saleStartAtBlock) public onlyOwner beforeStart {
-        require(_saleStartAtBlock > block.number);
-        saleStartAtBlock = _saleStartAtBlock;
-        SaleStarted();
-    }
-
-    /// @dev Close the crowdsale and issue unsold tokens to `owner` address.
-    function closeCrowdsale() public onlyOwner afterEnd {
-        require(!unsoldTokenIssued);
-
-        if (totalEthReceived >= SOFT_CAP) {
-            saleEndAtBlock = block.number;
-            issueUnsoldToken();
-            SaleSucceeded();
+    /// @dev Issue first round tokens to `owner` address.
+    function issueFirstRoundToken() onlyOwner internal {
+        if (firstRoundTokenIssued) {
+            InvalidState("First round tokens has been issued already");
         } else {
-            SaleFailed();
+            balances[owner] = balances[owner].add(CROWDSALE_ISSUED_SS);
+            Issue(issueIndex++, owner, 0, CROWDSALE_ISSUED_SS);
+            firstRoundTokenIssued = true;
         }
-    }
-
-    /// @dev goal achieved ahead of time
-    function goalAchieved() public onlyOwner {
-        require(!isGoalAchieved && softCapReached());
-        isGoalAchieved = true;
-        closeCrowdsale();
-    }
-
-    /// @dev Returns the current price.
-    function price() public constant returns (uint tokens) {
-        return computeTokenAmount(1 ether);
-    }
-
-    /// @dev This default function allows token to be purchased by directly
-    /// sending ether to this smart contract.
-    function () public payable {
-        issueToken(msg.sender);
-    }
-
-    /// @dev Issue token based on ether received.
-    /// @param recipient Address that newly issued token will be sent to.
-    function issueToken(address recipient) public payable inProgress {
-        // Personal cap check
-        require(balances[recipient].div(BASE_RATE).add(msg.value) <= CONTRIBUTION_MAX);
-        // Contribution cap check
-        require(CONTRIBUTION_MIN <= msg.value && msg.value <= CONTRIBUTION_MAX);
-
-        uint tokens = computeTokenAmount(msg.value);
-
-        totalEthReceived = totalEthReceived.add(msg.value);
-        soldSS = soldSS.add(tokens);
-
-        balances[recipient] = balances[recipient].add(tokens);
-        Issue(issueIndex++,recipient,msg.value,tokens);
-
-        require(owner.send(msg.value));
     }
 
     /// @dev Issue token for reserve.
@@ -427,72 +317,10 @@ contract SharderToken {
         Issue(issueIndex++,recipient,0,_issueTokensWithDecimal);
     }
 
-    /*
-     * INTERNAL FUNCTIONS
-     */
-    /// @dev Compute the amount of SS token that can be purchased.
-    /// @param ethAmount Amount of Ether to purchase SS.
-    /// @return Amount of SS token to purchase
-    function computeTokenAmount(uint ethAmount) internal constant returns (uint tokens) {
-        uint phase = (block.number - saleStartAtBlock).div(BLOCKS_PER_PHASE);
-
-        // A safe check
-        if (phase >= bonusPercentages.length) {
-            phase = bonusPercentages.length - 1;
-        }
-
-        uint tokenBase = ethAmount.mul(BASE_RATE);
-
-        //Check promotion supply and phase bonus
-        uint tokenBonus = 0;
-        if(totalEthReceived * BASE_RATE < MAX_PROMOTION_SS) {
-            tokenBonus = tokenBase.mul(bonusPercentages[phase]).div(100);
-        }
-
-        tokens = tokenBase.add(tokenBonus);
+    /// @dev This default function reject anyone to purchase the ss token
+    function() public payable {
+        revert();
     }
 
-    /// @dev Issue unsold token to `owner` address.
-    function issueUnsoldToken() internal {
-        if (unsoldTokenIssued) {
-            InvalidState("Unsold token has been issued already");
-        } else {
-            // Add another safe guard
-            require(soldSS > 0);
-
-            uint256 unsoldSS = totalSupply.sub(soldSS);
-            // Issue 'unsoldToken' to the admin account.
-            balances[owner] = balances[owner].add(unsoldSS);
-            Issue(issueIndex++,owner,0,unsoldSS);
-
-            unsoldTokenIssued = true;
-        }
-    }
-
-    /// @return true if sale has started, false otherwise.
-    function saleStarted() public constant returns (bool) {
-        return (saleStartAtBlock > 0 && block.number >= saleStartAtBlock);
-    }
-
-    /// @return true if sale has ended, false otherwise.
-    /// Sale ended in: a) end time of crowdsale reached, b) hard cap reached, c) goal achieved ahead of time
-    function saleEnded() public constant returns (bool) {
-        return saleStartAtBlock > 0 && (saleDue() || hardCapReached() || isGoalAchieved);
-    }
-
-    /// @return true if sale is due when the last phase is finished.
-    function saleDue() internal constant returns (bool) {
-        return block.number >= saleStartAtBlock + BLOCKS_PER_PHASE * NUM_OF_PHASE;
-    }
-
-    /// @return true if the hard cap is reached.
-    function hardCapReached() internal constant returns (bool) {
-        return totalEthReceived >= HARD_CAP;
-    }
-
-    /// @return true if the soft cap is reached.
-    function softCapReached() internal constant returns (bool) {
-        return totalEthReceived >= SOFT_CAP;
-    }
 }
 
