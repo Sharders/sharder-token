@@ -14,14 +14,19 @@
   limitations under the License.
 
   We upgrade the Sharder Token to v2.0:
-    a) adding the emergency transfer functionality for owner;
-    b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and legibility of the Sharder smart contract coding;
-    c) Adding the broadcast event: Fronzen;
+    a) Adding the emergency transfer functionality for owner.
+    b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and
+    legibility of the Sharder smart contract coding.
+    c) Adding the broadcast event 'Frozen'.
     d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention.
+    e) The global parameter is added to our smart contact in order to avoid that the exchanges trade Sharder tokens
+    before officials partnering with Sharder.
+    f) Add SSHolders to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
+    when Sharder Chain is online.
+    g) Lockup and lock-up query functions.
+  The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
 
-
-  Old Sharder token you can found at: https://etherscan.io/address/0xb15fe5a123e647ba594cea7a1e648646f95eb4aa
-  This contract include all crowdsale infomations.
+  Sharder Token v1.0 is expired. You can check code and get details on branch 'sharder-token-v1.0'.
 */
 pragma solidity ^0.4.18;
 
@@ -71,8 +76,7 @@ library SafeMath {
 }
 
 /**
-* @title Sharder Token v2.0.
-* SS(Sharder) is upgrade from SS(Sharder Storage), you can found the source code at sharder-storage-token branch.
+* @title Sharder Token v2.0. SS(Sharder) is upgrade from SS(Sharder Storage).
 * @author Ben - <xy@sharder.org>.
 * @dev https://github.com/ethereum/EIPs/issues/20
 * @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
@@ -80,14 +84,11 @@ library SafeMath {
 contract SharderToken {
     using SafeMath for uint;
     string public constant name = "Sharder";
-
     string public constant symbol = "SS";
-
     uint public constant decimals = 18;
     uint public totalSupply;
 
     mapping (address => mapping (address => uint256))  public allowed;
-
     mapping (address => uint) internal balances;
 
     /// The owner of contract
@@ -96,19 +97,25 @@ contract SharderToken {
     /// The admin account of contract
     address public admin;
 
-    mapping (address => bool) public accountLockup;
+    mapping (address => bool) internal accountLockup;
     mapping (address => uint) public accountLockupTime;
     mapping (address => bool) public frozenAccounts;
 
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |                        SS Token Issue Plan - First Round                          |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |  Total Sale  |   Airdrop    |  Community Reserve  |  Team Reserve | System Reward |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   |     50%      |     10%      |         10%         |  Don't Issued | Don't Issued  |
-    ///   +-----------------------------------------------------------------------------------+
-    ///   | 250,000,000  |  50,000,000  |     50,000,000      |      None     |      None     |
-    ///   +-----------------------------------------------------------------------------------+
+    ///   +--------------------------------------------------------------+
+    ///   |                 SS(Sharder) Token Issue Plan                 |
+    ///   +--------------------------------------------------------------+
+    ///   |                    First Round(Crowdsale)                    |
+    ///   +--------------------------------------------------------------+
+    ///   |     Total Sale    |      Airdrop      |  Community Reserve   |
+    ///   +--------------------------------------------------------------+
+    ///   |       50%         |        10%        |         10%          |
+    ///   +--------------------------------------------------------------+
+    ///   |     250,000,000   |     50,000,000    |     50,000,000       |
+    ///   +--------------------------------------------------------------+
+    ///   | Team Reserve(10% - 50,000,000 SS): Realse in 3 years period  |
+    ///   +--------------------------------------------------------------+
+    ///   | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
+    ///   +--------------------------------------------------------------+
     uint256 internal constant CROWDSALE_ISSUED_SS = 350000000000000000000000000;
 
     ///First round tokens whether isssued.
@@ -135,6 +142,9 @@ contract SharderToken {
 
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
+
+    /* This generates a public event on the blockchain that will notify clients */
+    event FrozenFunds(address target, bool frozen);
 
     /**
      * Internal transfer, only can be called by this contract
@@ -230,7 +240,7 @@ contract SharderToken {
      * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
      *
      * @param _from the address of the sender
-     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!! IMPORTANT is 18 DECIMALS
      */
     function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public returns (bool success) {
         require(balances[_from] >= _burnedTokensWithDecimal);                /// Check if the targeted balance is enough
@@ -262,7 +272,7 @@ contract SharderToken {
 
     /**
      * CONSTRUCTOR
-     * @dev Initialize the Sharder Token
+     * @dev Initialize the Sharder Token v2.0
      */
     function SharderToken() public {
         owner = msg.sender;
@@ -280,19 +290,17 @@ contract SharderToken {
         admin = _address;
     }
 
-    ///@dev Set frozen status of account.
-    function setAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
-        require(unsoldTokenIssued);
+    ///@dev Frozen or unfrozen account.
+    function changeAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
     }
 
-    /// @dev Lockup account till the date. Can't lockup again when this account locked already.
+    /// @dev Lockup account till the date. Can't lock-up again when this account locked already.
     /// 1 year = 31536000 seconds
     /// 0.5 year = 15768000 seconds
     function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
         require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
-
-        // frozen time = now + _lockupSeconds
+        // Frozen
         accountLockupTime[_address] = now + _lockupSeconds;
         accountLockup[_address] = true;
     }
@@ -308,16 +316,15 @@ contract SharderToken {
         }
     }
 
-    /// @dev Issue token for reserve.
-    /// @param recipient Address that newly issued reserve token will be sent to.
+    /// @dev Issue tokens for reserve.
     /// @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
-    function issueReserveToken(address recipient, uint256 _issueTokensWithDecimal) onlyOwner public {
-        balances[recipient] = balances[recipient].add(_issueTokensWithDecimal);
+    function issueReserveToken(uint256 _issueTokensWithDecimal) onlyOwner public {
+        balances[owner] = balances[owner].add(_issueTokensWithDecimal);
         totalSupply = totalSupply.add(_issueTokensWithDecimal);
-        Issue(issueIndex++,recipient,0,_issueTokensWithDecimal);
+        Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
     }
 
-    /// @dev This default function reject anyone to purchase the ss token
+    /// @dev This default function reject anyone to purchase the SS(Sharder) token.
     function() public payable {
         revert();
     }
