@@ -12,6 +12,11 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
+
+  !!! This contract use to crowdsale for Sharder, and include the Sharder Token v1.0.
+  The deployed online contract you can found at: https://etherscan.io/address/0xb15fe5a123e647ba594cea7a1e648646f95eb4aa
+
+  The Sharder Token be upgrad to v2.0, You can check code on branch 'sharder-token-v2.0'
 */
 pragma solidity ^0.4.18;
 
