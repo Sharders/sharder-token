@@ -101,6 +101,16 @@ contract SharderToken {
     mapping (address => uint) public accountLockupTime;
     mapping (address => bool) public frozenAccounts;
 
+    struct Holder {
+    address addr;
+    uint amount;
+    uint addTimeInSeconds;
+    }
+
+    mapping (address => uint) public holderIndex;
+
+    Holder[] ssHolders;
+
     /// +--------------------------------------------------------------+
     /// |                 SS(Sharder) Token Issue Plan                 |
     /// +--------------------------------------------------------------+
@@ -116,7 +126,7 @@ contract SharderToken {
     /// +--------------------------------------------------------------+
     /// | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
     /// +--------------------------------------------------------------+
-    uint256 internal constant CROWDSALE_ISSUED_SS = 350000000000000000000000000;
+    uint256 internal constant FIRST_ROUND_ISSUED_SS = 350000000000000000000000000;
 
     ///First round tokens whether isssued.
     bool internal firstRoundTokenIssued = false;
@@ -207,6 +217,22 @@ contract SharderToken {
         // Add the same to the recipient
         balances[_to] += _value;
         Transfer(_from, _to, _value);
+        // Update holder balance
+        if (holderIndex[_from] == 0) {
+            holderIndex[_from] = ssHolders.push(Holder(_from, balances[_from], now));
+        }
+        else {
+            ssHolders[holderIndex[_from]].amount = balances[_from];
+        }
+
+        if (holderIndex[_to] == 0) {
+            holderIndex[_to] = ssHolders.push(Holder(_to, balances[_to], now));
+        }
+        else {
+            ssHolders[holderIndex[_to]].amount = balances[_to];
+        }
+        // ssHolders[_from] = Holder(_from,balances[_from],now);
+        // ssHolders[_to] = Holder(_to,balances[_to],now);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balances[_from] + balances[_to] == previousBalances);
     }
@@ -296,16 +322,6 @@ contract SharderToken {
         return true;
     }
 
-
-    /**
-     * @dev Allows the current owner to transfer control of the contract to a newOwner.
-     * @param _newOwner The address to transfer ownership to.
-     */
-    function transferOwnership(address _newOwner) onlyOwner {
-        require(_newOwner != address(0));
-        owner = _newOwner;
-    }
-
     /**
      * CONSTRUCTOR
      * @dev Initialize the Sharder Token v2.0
@@ -316,6 +332,15 @@ contract SharderToken {
         totalSupply = FIRST_ROUND_ISSUED_SS;
         // Issue first round tokens
         issueFirstRoundToken();
+    }
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @param _newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address _newOwner) public onlyOwner {
+        require(_newOwner != address(0));
+        owner = _newOwner;
     }
 
     /*
@@ -331,9 +356,11 @@ contract SharderToken {
         if (firstRoundTokenIssued) {
             InvalidState("First round tokens has been issued already");
         } else {
-            balances[owner] = balances[owner].add(CROWDSALE_ISSUED_SS);
-            Issue(issueIndex++, owner, 0, CROWDSALE_ISSUED_SS);
+            balances[owner] = balances[owner].add(FIRST_ROUND_ISSUED_SS);
+            Issue(issueIndex++, owner, 0, FIRST_ROUND_ISSUED_SS);
             firstRoundTokenIssued = true;
+
+            holderIndex[owner] = ssHolders.push(Holder(owner, balances[owner], now));
         }
     }
 
@@ -346,7 +373,7 @@ contract SharderToken {
     }
 
     ///@dev Frozen or unfrozen account.
-    function changeAccountFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
+    function changeFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
     }
 
@@ -355,9 +382,19 @@ contract SharderToken {
     /// 0.5 year = 15768000 seconds
     function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
         require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
-        // Frozen
+        // lock-up account
         accountLockupTime[_address] = now + _lockupSeconds;
         accountLockup[_address] = true;
+    }
+
+    /// @dev Get the cuurent ss holder count.
+    function getHolderCount() public constant returns (uint _holdersCount){
+        return ssHolders.length - 1;
+    }
+
+    /// @dev Get the cuurent ss holder count.
+    function getHolders() public onlyAdmin constant returns (Holder[] _holders){
+        return ssHolders;
     }
 
     /**
@@ -375,7 +412,6 @@ contract SharderToken {
         paused = false;
         Unpause();
     }
-
 
     /// @dev This default function reject anyone to purchase the SS(Sharder) token.
     function() public payable {
