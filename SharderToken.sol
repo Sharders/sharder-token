@@ -89,7 +89,8 @@ contract SharderToken {
     uint public totalSupply;
 
     mapping (address => mapping (address => uint256))  public allowed;
-    mapping (address => uint) internal balances;
+
+    mapping (address => uint256) public balanceOf;
 
     /// The owner of contract
     address public owner;
@@ -207,34 +208,34 @@ contract SharderToken {
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
-        require(balances[_from] >= _value);
+        require(balanceOf[_from] >= _value);
         // Check for overflows
-        require(balances[_to] + _value > balances[_to]);
+        require(balanceOf[_to] + _value > balanceOf[_to]);
         // Save this for an assertion in the future
-        uint previousBalances = balances[_from] + balances[_to];
+        uint previousBalances = balanceOf[_from] + balanceOf[_to];
         // Subtract from the sender
-        balances[_from] -= _value;
+        balanceOf[_from] -= _value;
         // Add the same to the recipient
-        balances[_to] += _value;
+        balanceOf[_to] += _value;
         Transfer(_from, _to, _value);
         // Update holder balance
         if (holderIndex[_from] == 0) {
-            holderIndex[_from] = ssHolders.push(Holder(_from, balances[_from], now));
+            holderIndex[_from] = ssHolders.push(Holder(_from, balanceOf[_from], now));
         }
         else {
-            ssHolders[holderIndex[_from]].amount = balances[_from];
+            ssHolders[holderIndex[_from]].amount = balanceOf[_from];
         }
 
         if (holderIndex[_to] == 0) {
-            holderIndex[_to] = ssHolders.push(Holder(_to, balances[_to], now));
+            holderIndex[_to] = ssHolders.push(Holder(_to, balanceOf[_to], now));
         }
         else {
-            ssHolders[holderIndex[_to]].amount = balances[_to];
+            ssHolders[holderIndex[_to]].amount = balanceOf[_to];
         }
         // ssHolders[_from] = Holder(_from,balances[_from],now);
         // ssHolders[_to] = Holder(_to,balances[_to],now);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
-        assert(balances[_from] + balances[_to] == previousBalances);
+        assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
 
     /**
@@ -259,14 +260,14 @@ contract SharderToken {
         return true;
     }
 
-    /**
-    * @dev Gets the balance of the specified address.
-    * @param _owner The address to query the the balance of.
-    * @return An uint representing the amount owned by the passed address.
-    */
-    function balanceOf(address _owner) public constant returns (uint balance) {
-        return balances[_owner];
-    }
+    //    /**
+    //    * @dev Gets the balance of the specified address.
+    //    * @param _owner The address to query the the balance of.
+    //    * @return An uint representing the amount owned by the passed address.
+    //    */
+    //    function balanceOf(address _owner) public constant returns (uint balance) {
+    //        return balanceOf[_owner];
+    //    }
 
     /**
      * Set allowance for other address
@@ -298,8 +299,10 @@ contract SharderToken {
        * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
        */
     function burn(uint256 _burnedTokensWithDecimal) public returns (bool success) {
-        require(balances[msg.sender] >= _burnedTokensWithDecimal);   /// Check if the sender has enough
-        balances[msg.sender] -= _burnedTokensWithDecimal;            /// Subtract from the sender
+        require(balanceOf[msg.sender] >= _burnedTokensWithDecimal);
+        /// Check if the sender has enough
+        balanceOf[msg.sender] -= _burnedTokensWithDecimal;
+        /// Subtract from the sender
         totalSupply -= _burnedTokensWithDecimal;                      /// Updates totalSupply
         Burn(msg.sender, _burnedTokensWithDecimal);
         return true;
@@ -313,9 +316,11 @@ contract SharderToken {
      * @param _burnedTokensWithDecimal the amount of reserve tokens. !!! IMPORTANT is 18 DECIMALS
      */
     function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public returns (bool success) {
-        require(balances[_from] >= _burnedTokensWithDecimal);                /// Check if the targeted balance is enough
+        require(balanceOf[_from] >= _burnedTokensWithDecimal);
+        /// Check if the targeted balance is enough
         require(_burnedTokensWithDecimal <= allowed[_from][msg.sender]);    /// Check allowance
-        balances[_from] -= _burnedTokensWithDecimal;                        /// Subtract from the targeted balance
+        balanceOf[_from] -= _burnedTokensWithDecimal;
+        /// Subtract from the targeted balance
         allowed[_from][msg.sender] -= _burnedTokensWithDecimal;             /// Subtract from the sender's allowance
         totalSupply -= _burnedTokensWithDecimal;                            /// Update totalSupply
         Burn(_from, _burnedTokensWithDecimal);
@@ -356,18 +361,18 @@ contract SharderToken {
         if (firstRoundTokenIssued) {
             InvalidState("First round tokens has been issued already");
         } else {
-            balances[owner] = balances[owner].add(FIRST_ROUND_ISSUED_SS);
+            balanceOf[owner] = balanceOf[owner].add(FIRST_ROUND_ISSUED_SS);
             Issue(issueIndex++, owner, 0, FIRST_ROUND_ISSUED_SS);
             firstRoundTokenIssued = true;
 
-            holderIndex[owner] = ssHolders.push(Holder(owner, balances[owner], now));
+            holderIndex[owner] = ssHolders.push(Holder(owner, balanceOf[owner], now));
         }
     }
 
     /// @dev Issue tokens for reserve.
     /// @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
     function issueReserveToken(uint256 _issueTokensWithDecimal) onlyOwner public {
-        balances[owner] = balances[owner].add(_issueTokensWithDecimal);
+        balanceOf[owner] = balanceOf[owner].add(_issueTokensWithDecimal);
         totalSupply = totalSupply.add(_issueTokensWithDecimal);
         Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
     }
