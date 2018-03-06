@@ -84,9 +84,7 @@ library SafeMath {
 contract SharderToken {
     using SafeMath for uint;
     string public name = "Sharder";
-
     string public symbol = "SS";
-
     uint8 public  decimals = 18;
 
     /// +--------------------------------------------------------------+
@@ -316,8 +314,6 @@ contract SharderToken {
     function SharderToken() public {
         owner = msg.sender;
         admin = msg.sender;
-        // Issue first round tokens
-        issueFirstRoundToken();
     }
 
     /**
@@ -338,7 +334,7 @@ contract SharderToken {
     }
 
     /// @dev Issue first round tokens to `owner` address.
-    function issueFirstRoundToken() onlyOwner internal {
+    function issueFirstRoundToken() public onlyOwner {
         if (firstRoundTokenIssued) {
             InvalidState("First round tokens has been issued already");
         } else {
