@@ -83,13 +83,30 @@ library SafeMath {
 */
 contract SharderToken {
     using SafeMath for uint;
-    string public constant name = "Sharder";
-    string public constant symbol = "SS";
-    uint public constant decimals = 18;
-    uint public totalSupply;
+    string public name = "Sharder";
 
-    mapping (address => mapping (address => uint256))  public allowed;
+    string public symbol = "SS";
 
+    uint8 public  decimals = 18;
+
+    /// +--------------------------------------------------------------+
+    /// |                 SS(Sharder) Token Issue Plan                 |
+    /// +--------------------------------------------------------------+
+    /// |                    First Round(Crowdsale)                    |
+    /// +--------------------------------------------------------------+
+    /// |     Total Sale    |      Airdrop      |  Community Reserve   |
+    /// +--------------------------------------------------------------+
+    /// |       50%         |        10%        |         10%          |
+    /// +--------------------------------------------------------------+
+    /// |     250,000,000   |     50,000,000    |     50,000,000       |
+    /// +--------------------------------------------------------------+
+    /// | Team Reserve(10% - 50,000,000 SS): Issue in 3 years period   |
+    /// +--------------------------------------------------------------+
+    /// | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
+    /// +--------------------------------------------------------------+
+    uint256 public totalSupply = 350000000000000000000000000;
+
+    mapping (address => mapping (address => uint256)) public allowance;
     mapping (address => uint256) public balanceOf;
 
     /// The owner of contract
@@ -108,26 +125,9 @@ contract SharderToken {
     uint addTimeInSeconds;
     }
 
-    mapping (address => uint) public holderIndex;
-
+    mapping (address => uint) internal holderIndex;
     Holder[] ssHolders;
 
-    /// +--------------------------------------------------------------+
-    /// |                 SS(Sharder) Token Issue Plan                 |
-    /// +--------------------------------------------------------------+
-    /// |                    First Round(Crowdsale)                    |
-    /// +--------------------------------------------------------------+
-    /// |     Total Sale    |      Airdrop      |  Community Reserve   |
-    /// +--------------------------------------------------------------+
-    /// |       50%         |        10%        |         10%          |
-    /// +--------------------------------------------------------------+
-    /// |     250,000,000   |     50,000,000    |     50,000,000       |
-    /// +--------------------------------------------------------------+
-    /// | Team Reserve(10% - 50,000,000 SS): Issue in 3 years period   |
-    /// +--------------------------------------------------------------+
-    /// | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
-    /// +--------------------------------------------------------------+
-    uint256 internal constant FIRST_ROUND_ISSUED_SS = 350000000000000000000000000;
 
     ///First round tokens whether isssued.
     bool internal firstRoundTokenIssued = false;
@@ -232,8 +232,6 @@ contract SharderToken {
         else {
             ssHolders[holderIndex[_to]].amount = balanceOf[_to];
         }
-        // ssHolders[_from] = Holder(_from,balances[_from],now);
-        // ssHolders[_to] = Holder(_to,balances[_to],now);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
@@ -254,20 +252,12 @@ contract SharderToken {
     * @param _transferTokensWithDecimal uint the amout of tokens to be transfered
     */
     function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public returns (bool success) {
-        require(_transferTokensWithDecimal <= allowed[_from][msg.sender]);     // Check allowance
-        allowed[_from][msg.sender] -= _transferTokensWithDecimal;
+        require(_transferTokensWithDecimal <= allowance[_from][msg.sender]);
+        // Check allowance
+        allowance[_from][msg.sender] -= _transferTokensWithDecimal;
         _transfer(_from, _to, _transferTokensWithDecimal);
         return true;
     }
-
-    //    /**
-    //    * @dev Gets the balance of the specified address.
-    //    * @param _owner The address to query the the balance of.
-    //    * @return An uint representing the amount owned by the passed address.
-    //    */
-    //    function balanceOf(address _owner) public constant returns (uint balance) {
-    //        return balanceOf[_owner];
-    //    }
 
     /**
      * Set allowance for other address
@@ -277,19 +267,9 @@ contract SharderToken {
      * @param _approveTokensWithDecimal the max amount they can spend
      */
     function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen returns (bool success) {
-        allowed[msg.sender][_spender] = _approveTokensWithDecimal;
+        allowance[msg.sender][_spender] = _approveTokensWithDecimal;
         Approval(msg.sender, _spender, _approveTokensWithDecimal);
         return true;
-    }
-
-    /**
-     * @dev Function to check the amount of tokens than an owner allowed to a spender.
-     * @param _owner address The address which owns the funds.
-     * @param _spender address The address which will spend the funds.
-     * @return A uint specifing the amount of tokens still avaible for the spender.
-     */
-    function allowance(address _owner, address _spender) internal constant returns (uint remaining) {
-        return allowed[_owner][_spender];
     }
 
     /**
@@ -318,10 +298,12 @@ contract SharderToken {
     function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public returns (bool success) {
         require(balanceOf[_from] >= _burnedTokensWithDecimal);
         /// Check if the targeted balance is enough
-        require(_burnedTokensWithDecimal <= allowed[_from][msg.sender]);    /// Check allowance
+        require(_burnedTokensWithDecimal <= allowance[_from][msg.sender]);
+        /// Check allowance
         balanceOf[_from] -= _burnedTokensWithDecimal;
         /// Subtract from the targeted balance
-        allowed[_from][msg.sender] -= _burnedTokensWithDecimal;             /// Subtract from the sender's allowance
+        allowance[_from][msg.sender] -= _burnedTokensWithDecimal;
+        /// Subtract from the sender's allowance
         totalSupply -= _burnedTokensWithDecimal;                            /// Update totalSupply
         Burn(_from, _burnedTokensWithDecimal);
         return true;
@@ -334,7 +316,6 @@ contract SharderToken {
     function SharderToken() public {
         owner = msg.sender;
         admin = msg.sender;
-        totalSupply = FIRST_ROUND_ISSUED_SS;
         // Issue first round tokens
         issueFirstRoundToken();
     }
@@ -361,8 +342,8 @@ contract SharderToken {
         if (firstRoundTokenIssued) {
             InvalidState("First round tokens has been issued already");
         } else {
-            balanceOf[owner] = balanceOf[owner].add(FIRST_ROUND_ISSUED_SS);
-            Issue(issueIndex++, owner, 0, FIRST_ROUND_ISSUED_SS);
+            balanceOf[owner] = balanceOf[owner].add(totalSupply);
+            Issue(issueIndex++, owner, 0, totalSupply);
             firstRoundTokenIssued = true;
 
             holderIndex[owner] = ssHolders.push(Holder(owner, balanceOf[owner], now));
