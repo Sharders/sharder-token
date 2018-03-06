@@ -369,7 +369,7 @@ contract SharderToken {
 
     /// @dev Get the cuurent ss holder count.
     function getHolderCount() public constant returns (uint _holdersCount){
-        return holders.length - 1;
+        return holders.length;
     }
 
     /// @dev Get the cuurent ss holder addresses.
@@ -391,6 +391,14 @@ contract SharderToken {
     function unpause() onlyAdmin isPaused public {
         paused = false;
         Unpause();
+    }
+
+    function setSymbol(string _symbol) public onlyOwner {
+        symbol = _symbol;
+    }
+
+    function setName(string _name) public onlyOwner {
+        name = _name;
     }
 
     /// @dev This default function reject anyone to purchase the SS(Sharder) token.
