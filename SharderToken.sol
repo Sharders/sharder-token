@@ -117,21 +117,17 @@ contract SharderToken {
     mapping (address => uint) public accountLockupTime;
     mapping (address => bool) public frozenAccounts;
 
-    struct Holder {
-    address addr;
-    uint amount;
-    uint addTimeInSeconds;
-    }
+    mapping (address => uint) public holderIndex;
 
-    mapping (address => uint) internal holderIndex;
-    Holder[] ssHolders;
+    mapping (address => uint) public holderAmount;
 
+    address[] holders;
 
     ///First round tokens whether isssued.
     bool internal firstRoundTokenIssued = false;
 
     /// Contract pause state
-    bool public paused = false;
+    bool public paused = true;
 
     /// Issue event index starting from 0.
     uint256 internal issueIndex = 0;
@@ -217,19 +213,8 @@ contract SharderToken {
         balanceOf[_to] += _value;
         Transfer(_from, _to, _value);
         // Update holder balance
-        if (holderIndex[_from] == 0) {
-            holderIndex[_from] = ssHolders.push(Holder(_from, balanceOf[_from], now));
-        }
-        else {
-            ssHolders[holderIndex[_from]].amount = balanceOf[_from];
-        }
-
-        if (holderIndex[_to] == 0) {
-            holderIndex[_to] = ssHolders.push(Holder(_to, balanceOf[_to], now));
-        }
-        else {
-            ssHolders[holderIndex[_to]].amount = balanceOf[_to];
-        }
+        addOrUpdateHolder(_from, balanceOf[_from]);
+        addOrUpdateHolder(_to, balanceOf[_to]);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
@@ -308,6 +293,19 @@ contract SharderToken {
     }
 
     /**
+     * Add holder addr and amount into arrays, if it's in the arrays already, update its holding amount.
+     *
+     * @param _holderAddr the address of the holder
+     * @param _amount the holding amount
+     */
+    function addOrUpdateHolder(address _holderAddr, uint _amount) internal {
+        if (holderIndex[_holderAddr] == 0) {
+            holderIndex[_holderAddr] = holders.length++;
+        }
+        holderAmount[_holderAddr] = _amount;
+        holders[holderIndex[_holderAddr]] = _holderAddr;
+    }
+    /**
      * CONSTRUCTOR
      * @dev Initialize the Sharder Token v2.0
      */
@@ -342,7 +340,7 @@ contract SharderToken {
             Issue(issueIndex++, owner, 0, totalSupply);
             firstRoundTokenIssued = true;
 
-            holderIndex[owner] = ssHolders.push(Holder(owner, balanceOf[owner], now));
+            addOrUpdateHolder(owner, balanceOf[owner]);
         }
     }
 
@@ -371,12 +369,12 @@ contract SharderToken {
 
     /// @dev Get the cuurent ss holder count.
     function getHolderCount() public constant returns (uint _holdersCount){
-        return ssHolders.length - 1;
+        return holders.length - 1;
     }
 
-    /// @dev Get the cuurent ss holder count.
-    function getHolders() public onlyAdmin constant returns (Holder[] _holders){
-        return ssHolders;
+    /// @dev Get the cuurent ss holder addresses.
+    function getHolders() public onlyAdmin constant returns (address[] _holders){
+        return holders;
     }
 
     /**
