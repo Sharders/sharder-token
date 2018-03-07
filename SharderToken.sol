@@ -235,7 +235,7 @@ contract SharderToken {
     * @param _to address The address which you want to transfer to
     * @param _transferTokensWithDecimal uint the amout of tokens to be transfered
     */
-    function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public returns (bool success) {
+    function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(_transferTokensWithDecimal <= allowance[_from][msg.sender]);
         // Check allowance
         allowance[_from][msg.sender] -= _transferTokensWithDecimal;
@@ -250,7 +250,7 @@ contract SharderToken {
      * @param _spender The address authorized to spend
      * @param _approveTokensWithDecimal the max amount they can spend
      */
-    function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen returns (bool success) {
+    function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         allowance[msg.sender][_spender] = _approveTokensWithDecimal;
         Approval(msg.sender, _spender, _approveTokensWithDecimal);
         return true;
@@ -262,7 +262,7 @@ contract SharderToken {
        *
        * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
        */
-    function burn(uint256 _burnedTokensWithDecimal) public returns (bool success) {
+    function burn(uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[msg.sender] >= _burnedTokensWithDecimal);
         /// Check if the sender has enough
         balanceOf[msg.sender] -= _burnedTokensWithDecimal;
@@ -279,7 +279,7 @@ contract SharderToken {
      * @param _from the address of the sender
      * @param _burnedTokensWithDecimal the amount of reserve tokens. !!! IMPORTANT is 18 DECIMALS
      */
-    function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public returns (bool success) {
+    function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[_from] >= _burnedTokensWithDecimal);
         /// Check if the targeted balance is enough
         require(_burnedTokensWithDecimal <= allowance[_from][msg.sender]);
