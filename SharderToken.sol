@@ -339,6 +339,7 @@ contract SharderToken {
         } else {
             balanceOf[owner] = balanceOf[owner].add(totalSupply);
             Issue(issueIndex++, owner, 0, totalSupply);
+            addOrUpdateHolder(owner);
             firstRoundTokenIssued = true;
         }
     }
@@ -368,7 +369,7 @@ contract SharderToken {
 
     /// @dev Get the cuurent ss holder count.
     function getHolderCount() public constant returns (uint _holdersCount){
-        return holders.length;
+        return holders.length - 1;
     }
 
     /// @dev Get the cuurent ss holder addresses.
