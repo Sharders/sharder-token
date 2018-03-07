@@ -118,9 +118,6 @@ contract SharderToken {
     mapping (address => bool) public frozenAccounts;
 
     mapping (address => uint) public holderIndex;
-
-    mapping (address => uint) public holderAmount;
-
     address[] holders;
 
     ///First round tokens whether isssued.
@@ -183,7 +180,7 @@ contract SharderToken {
      * @dev Modifier to make a function callable only when the contract is not paused.
      */
     modifier isNotPaused() {
-        require(!paused);
+        require((msg.sender == owner || msg.sender == admin) || !paused);
         _;
     }
 
@@ -299,10 +296,9 @@ contract SharderToken {
      * @param _amount the holding amount
      */
     function addOrUpdateHolder(address _holderAddr, uint _amount) internal {
-        if (holderIndex[_holderAddr] == 0) {
+        if (holderIndex[_holderAddr] == 0 && _holderAddr != owner) {
             holderIndex[_holderAddr] = holders.length++;
         }
-        holderAmount[_holderAddr] = _amount;
         holders[holderIndex[_holderAddr]] = _holderAddr;
     }
     /**
