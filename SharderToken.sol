@@ -151,10 +151,10 @@ contract SharderToken {
     /* This notifies clients about the account frozen */
     event FrozenFunds(address target, bool frozen);
 
-    /* This notifies clients about the pasuse in  */
+    /* This notifies clients about the pause */
     event Pause();
 
-    /* This notifies clients about the unpasuse */
+    /* This notifies clients about the unpause */
     event Unpause();
 
 
@@ -211,10 +211,10 @@ contract SharderToken {
         balanceOf[_from] -= _value;
         // Add the same to the recipient
         balanceOf[_to] += _value;
-        Transfer(_from, _to, _value);
         // Update holder balance
         addOrUpdateHolder(_from, balanceOf[_from]);
         addOrUpdateHolder(_to, balanceOf[_to]);
+        Transfer(_from, _to, _value);
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
@@ -401,7 +401,7 @@ contract SharderToken {
         name = _name;
     }
 
-    /// @dev This default function reject anyone to purchase the SS(Sharder) token.
+    /// @dev This default function reject anyone to purchase the SS(Sharder) token after crowdsale is finished.
     function() public payable {
         revert();
     }
