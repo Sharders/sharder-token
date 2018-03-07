@@ -117,8 +117,9 @@ contract SharderToken {
     mapping (address => uint) public accountLockupTime;
     mapping (address => bool) public frozenAccounts;
 
-    mapping (address => uint) public holderIndex;
-    address[] holders;
+    mapping (address => uint) internal holderIndex;
+
+    address[] internal holders;
 
     ///First round tokens whether isssued.
     bool internal firstRoundTokenIssued = false;
@@ -180,7 +181,8 @@ contract SharderToken {
      * @dev Modifier to make a function callable only when the contract is not paused.
      */
     modifier isNotPaused() {
-        require((msg.sender == owner || msg.sender == admin) || !paused);
+        require((msg.sender == owner && paused) || (msg.sender == admin && paused) || !paused);
+        //        require(!paused);
         _;
     }
 
@@ -298,11 +300,10 @@ contract SharderToken {
      */
     function addOrUpdateHolder(address _holderAddr) internal {
         // Check and add holder to array
-        if (holderIndex[_holderAddr] == 0 && _holderAddr != owner) {
+        if (holderIndex[_holderAddr] == 0) {
             holderIndex[_holderAddr] = holders.length++;
         }
         holders[holderIndex[_holderAddr]] = _holderAddr;
-
     }
 
     /**
@@ -338,7 +339,6 @@ contract SharderToken {
         } else {
             balanceOf[owner] = balanceOf[owner].add(totalSupply);
             Issue(issueIndex++, owner, 0, totalSupply);
-            // addOrUpdateHolder(owner);
             firstRoundTokenIssued = true;
         }
     }
