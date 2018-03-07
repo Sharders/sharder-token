@@ -208,10 +208,12 @@ contract SharderToken {
         balanceOf[_from] -= _value;
         // Add the same to the recipient
         balanceOf[_to] += _value;
-        // Update holder balance
-        addOrUpdateHolder(_from, balanceOf[_from]);
-        addOrUpdateHolder(_to, balanceOf[_to]);
+        // Update holders
+        addOrUpdateHolder(_from);
+        addOrUpdateHolder(_to);
+
         Transfer(_from, _to, _value);
+
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
@@ -293,14 +295,41 @@ contract SharderToken {
      * Add holder addr and amount into arrays, if it's in the arrays already, update its holding amount.
      *
      * @param _holderAddr the address of the holder
-     * @param _amount the holding amount
      */
-    function addOrUpdateHolder(address _holderAddr, uint _amount) internal {
+    function addOrUpdateHolder(address _holderAddr) internal {
+        // Check and add holder to array
         if (holderIndex[_holderAddr] == 0 && _holderAddr != owner) {
             holderIndex[_holderAddr] = holders.length++;
         }
         holders[holderIndex[_holderAddr]] = _holderAddr;
+
+        // Adjust
+        checkAndAdjustHolders(_holderAddr);
     }
+
+    function checkAndAdjustHolders(address _holderAddr) internal {
+        // check balance: if balance > 0, no needs to adjust
+        if (balanceOf[_holderAddr] > 0) return;
+
+        // get index from index array and check
+        uint index = holderIndex[_holderAddr];
+        if (index == 0) return;
+
+        // check index whether valid
+        uint len = holders.length;
+        if (index >= len) return;
+
+        // move forward
+        for (uint i = index; i < len - 1; i++) {
+            holders[i] = holders[i + 1];
+        }
+
+        // del holder and adjust size of holder array
+        delete holders[len - 1];
+        holders.length--;
+    }
+
+
     /**
      * CONSTRUCTOR
      * @dev Initialize the Sharder Token v2.0
@@ -336,7 +365,7 @@ contract SharderToken {
             Issue(issueIndex++, owner, 0, totalSupply);
             firstRoundTokenIssued = true;
 
-            addOrUpdateHolder(owner, balanceOf[owner]);
+            addOrUpdateHolder(owner);
         }
     }
 
