@@ -303,32 +303,7 @@ contract SharderToken {
         }
         holders[holderIndex[_holderAddr]] = _holderAddr;
 
-        // Adjust
-        checkAndAdjustHolders(_holderAddr);
     }
-
-    function checkAndAdjustHolders(address _holderAddr) internal {
-        // check balance: if balance > 0, no needs to adjust
-        if (balanceOf[_holderAddr] > 0) return;
-
-        // get index from index array and check
-        uint index = holderIndex[_holderAddr];
-        if (index == 0) return;
-
-        // check index whether valid
-        uint len = holders.length;
-        if (index >= len) return;
-
-        // move forward
-        for (uint i = index; i < len - 1; i++) {
-            holders[i] = holders[i + 1];
-        }
-
-        // del holder and adjust size of holder array
-        delete holders[len - 1];
-        holders.length--;
-    }
-
 
     /**
      * CONSTRUCTOR
@@ -363,9 +338,8 @@ contract SharderToken {
         } else {
             balanceOf[owner] = balanceOf[owner].add(totalSupply);
             Issue(issueIndex++, owner, 0, totalSupply);
+            // addOrUpdateHolder(owner);
             firstRoundTokenIssued = true;
-
-            addOrUpdateHolder(owner);
         }
     }
 
