@@ -21,7 +21,7 @@
     d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention. Adjust format of input paramters.
     e) The global parameter is added to our smart contact in order to avoid that the exchanges trade Sharder tokens
     before officials partnering with Sharder.
-    f) Add SSHolders to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
+    f) Add holder array to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
     when Sharder Chain is online.
     g) Lockup and lock-up query functions.
   The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
@@ -267,7 +267,7 @@ contract SharderToken {
         /// Check if the sender has enough
         balanceOf[msg.sender] -= _burnedTokensWithDecimal;
         /// Subtract from the sender
-        totalSupply -= _burnedTokensWithDecimal;                      /// Updates totalSupply
+        totalSupply -= _burnedTokensWithDecimal;
         Burn(msg.sender, _burnedTokensWithDecimal);
         return true;
     }
@@ -288,13 +288,13 @@ contract SharderToken {
         /// Subtract from the targeted balance
         allowance[_from][msg.sender] -= _burnedTokensWithDecimal;
         /// Subtract from the sender's allowance
-        totalSupply -= _burnedTokensWithDecimal;                            /// Update totalSupply
+        totalSupply -= _burnedTokensWithDecimal;
         Burn(_from, _burnedTokensWithDecimal);
         return true;
     }
 
     /**
-     * Add holder addr and amount into arrays, if it's in the arrays already, update its holding amount.
+     * Add holder addr into arrays.
      *
      * @param _holderAddr the address of the holder
      */
@@ -324,9 +324,6 @@ contract SharderToken {
         owner = _newOwner;
     }
 
-    /*
-     * PUBLIC FUNCTIONS
-     */
     ///@dev Set admin account to manage contract.
     function setAdmin(address _address) public onlyOwner {
         admin = _address;
@@ -401,7 +398,7 @@ contract SharderToken {
         name = _name;
     }
 
-    /// @dev This default function reject anyone to purchase the SS(Sharder) token after crowdsale is finished.
+    /// @dev This default function reject anyone to purchase the SS(Sharder) token after crowdsale finished.
     function() public payable {
         revert();
     }
