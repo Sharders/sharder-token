@@ -331,14 +331,12 @@ contract SharderToken {
 
     /// @dev Issue first round tokens to `owner` address.
     function issueFirstRoundToken() public onlyOwner {
-        if (firstRoundTokenIssued) {
-            InvalidState("First round tokens has been issued already");
-        } else {
-            balanceOf[owner] = balanceOf[owner].add(totalSupply);
-            Issue(issueIndex++, owner, 0, totalSupply);
-            addOrUpdateHolder(owner);
-            firstRoundTokenIssued = true;
-        }
+        require(!firstRoundTokenIssued);
+
+        balanceOf[owner] = balanceOf[owner].add(totalSupply);
+        Issue(issueIndex++, owner, 0, totalSupply);
+        addOrUpdateHolder(owner);
+        firstRoundTokenIssued = true;
     }
 
     /// @dev Issue tokens for reserve.
