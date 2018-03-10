@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  We upgrade the Sharder Token to v2.0:
+  ################ Sharder-Token-v2.0 ###############
     a) Adding the emergency transfer functionality for owner.
     b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and
     legibility of the Sharder smart contract coding.
@@ -24,9 +24,9 @@
     f) Add holder array to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
     when Sharder Chain is online.
     g) Lockup and lock-up query functions.
-  The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
+    The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
 
-  Sharder Token v1.0 is expired. You can check code and get details on branch 'sharder-token-v1.0'.
+    Sharder-Token-v1.0 is expired. You can check the code and get the details on branch 'sharder-token-v1.0'.
 */
 pragma solidity ^0.4.18;
 
@@ -78,8 +78,7 @@ library SafeMath {
 /**
 * @title Sharder Token v2.0. SS(Sharder) is upgrade from SS(Sharder Storage).
 * @author Ben - <xy@sharder.org>.
-* @dev https://github.com/ethereum/EIPs/issues/20
-* @dev Based on code by FirstBlood: https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
+* @dev ERC-20: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 */
 contract SharderToken {
     using SafeMath for uint;
@@ -94,13 +93,11 @@ contract SharderToken {
     /// +--------------------------------------------------------------+
     /// |     Total Sale    |      Airdrop      |  Community Reserve   |
     /// +--------------------------------------------------------------+
-    /// |       50%         |        10%        |         10%          |
-    /// +--------------------------------------------------------------+
     /// |     250,000,000   |     50,000,000    |     50,000,000       |
     /// +--------------------------------------------------------------+
-    /// | Team Reserve(10% - 50,000,000 SS): Issue in 3 years period   |
+    /// | Team Reserve(50,000,000 SS): Issue in 3 years period         |
     /// +--------------------------------------------------------------+
-    /// | System Reward(20% - 100,000,000 SS): Reward by Sharder Chain |
+    /// | System Reward(100,000,000 SS): Reward by Sharder Chain Auto  |
     /// +--------------------------------------------------------------+
     uint256 public totalSupply = 350000000000000000000000000;
 
@@ -118,7 +115,6 @@ contract SharderToken {
     mapping (address => bool) public frozenAccounts;
 
     mapping (address => uint) internal holderIndex;
-
     address[] internal holders;
 
     ///First round tokens whether isssued.
@@ -130,11 +126,10 @@ contract SharderToken {
     /// Issue event index starting from 0.
     uint256 internal issueIndex = 0;
 
-    /// Emitted when a function is invocated without the specified preconditions.
-    /// This event will not come alone with an exception.
+    // Emitted when a function is invocated without the specified preconditions.
     event InvalidState(bytes msg);
 
-    /// This notifies clients about the token issued.
+    // This notifies clients about the token issued.
     event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
 
     // This notifies clients about the amount to transfer
@@ -146,13 +141,13 @@ contract SharderToken {
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
 
-    /* This notifies clients about the account frozen */
+    // This notifies clients about the account frozen
     event FrozenFunds(address target, bool frozen);
 
-    /* This notifies clients about the pause */
+    // This notifies clients about the pause
     event Pause();
 
-    /* This notifies clients about the unpause */
+    // This notifies clients about the unpause
     event Unpause();
 
 
@@ -182,7 +177,6 @@ contract SharderToken {
      */
     modifier isNotPaused() {
         require((msg.sender == owner && paused) || (msg.sender == admin && paused) || !paused);
-        //        require(!paused);
         _;
     }
 
@@ -221,19 +215,19 @@ contract SharderToken {
     }
 
     /**
-    * @dev transfer token for a specified address
-    * @param _to The address to transfer to.
-    * @param _transferTokensWithDecimal The amount to be transferred.
+     * @dev transfer token for a specified address
+     * @param _to The address to transfer to.
+     * @param _transferTokensWithDecimal The amount to be transferred.
     */
     function transfer(address _to, uint _transferTokensWithDecimal) public {
         _transfer(msg.sender, _to, _transferTokensWithDecimal);
     }
 
     /**
-    * @dev Transfer tokens from one address to another
-    * @param _from address The address which you want to send tokens from
-    * @param _to address The address which you want to transfer to
-    * @param _transferTokensWithDecimal uint the amout of tokens to be transfered
+     * @dev Transfer tokens from one address to another
+     * @param _from address The address which you want to send tokens from
+     * @param _to address The address which you want to transfer to
+     * @param _transferTokensWithDecimal uint the amout of tokens to be transfered
     */
     function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(_transferTokensWithDecimal <= allowance[_from][msg.sender]);
@@ -257,11 +251,10 @@ contract SharderToken {
     }
 
     /**
-       * Destroy tokens
-       * Remove `_value` tokens from the system irreversibly
-       *
-       * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
-       */
+     * Destroy tokens
+     * Remove `_value` tokens from the system irreversibly
+     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+    */
     function burn(uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[msg.sender] >= _burnedTokensWithDecimal);
         /// Check if the sender has enough
@@ -275,10 +268,9 @@ contract SharderToken {
     /**
      * Destroy tokens from other account
      * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
-     *
      * @param _from the address of the sender
      * @param _burnedTokensWithDecimal the amount of reserve tokens. !!! IMPORTANT is 18 DECIMALS
-     */
+    */
     function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[_from] >= _burnedTokensWithDecimal);
         /// Check if the targeted balance is enough
@@ -295,9 +287,8 @@ contract SharderToken {
 
     /**
      * Add holder addr into arrays.
-     *
      * @param _holderAddr the address of the holder
-     */
+    */
     function addOrUpdateHolder(address _holderAddr) internal {
         // Check and add holder to array
         if (holderIndex[_holderAddr] == 0) {
@@ -324,12 +315,16 @@ contract SharderToken {
         owner = _newOwner;
     }
 
-    ///@dev Set admin account to manage contract.
+    /**
+    * @dev Set admin account to manage contract.
+    */
     function setAdmin(address _address) public onlyOwner {
         admin = _address;
     }
 
-    /// @dev Issue first round tokens to `owner` address.
+    /**
+    * @dev Issue first round tokens to `owner` address.
+    */
     function issueFirstRoundToken() public onlyOwner {
         require(!firstRoundTokenIssued);
 
@@ -339,22 +334,27 @@ contract SharderToken {
         firstRoundTokenIssued = true;
     }
 
-    /// @dev Issue tokens for reserve.
-    /// @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+    /**
+     * @dev Issue tokens for reserve.
+     * @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+    */
     function issueReserveToken(uint256 _issueTokensWithDecimal) onlyOwner public {
         balanceOf[owner] = balanceOf[owner].add(_issueTokensWithDecimal);
         totalSupply = totalSupply.add(_issueTokensWithDecimal);
         Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
     }
 
-    ///@dev Frozen or unfrozen account.
+    /**
+    * @dev Frozen or unfrozen account.
+    */
     function changeFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
     }
 
-    /// @dev Lockup account till the date. Can't lock-up again when this account locked already.
-    /// 1 year = 31536000 seconds
-    /// 0.5 year = 15768000 seconds
+    /**
+    * @dev Lockup account till the date. Can't lock-up again when this account locked already.
+    * 1 year = 31536000 seconds, 0.5 year = 15768000 seconds
+    */
     function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
         require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
         // lock-up account
@@ -362,19 +362,23 @@ contract SharderToken {
         accountLockup[_address] = true;
     }
 
-    /// @dev Get the cuurent ss holder count.
+    /**
+    * @dev Get the cuurent ss holder count.
+    */
     function getHolderCount() public constant returns (uint _holdersCount){
         return holders.length - 1;
     }
 
-    /// @dev Get the cuurent ss holder addresses.
+    /*
+    * @dev Get the cuurent ss holder addresses.
+    */
     function getHolders() public onlyAdmin constant returns (address[] _holders){
         return holders;
     }
 
     /**
-      * @dev called by the owner to pause, triggers stopped state
-      */
+     * @dev called by the owner to pause, triggers stopped state
+    */
     function pause() onlyAdmin isNotPaused public {
         paused = true;
         Pause();
@@ -382,7 +386,7 @@ contract SharderToken {
 
     /**
      * @dev called by the owner to unpause, returns to normal state
-     */
+    */
     function unpause() onlyAdmin isPaused public {
         paused = false;
         Unpause();
