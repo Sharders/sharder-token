@@ -108,7 +108,7 @@ contract SharderToken {
     address public owner;
 
     /// The admin account of contract
-    address public admin;
+    address internal admin;
 
     mapping (address => bool) internal accountLockup;
     mapping (address => uint) public accountLockupTime;
@@ -370,10 +370,17 @@ contract SharderToken {
     }
 
     /*
-    * @dev Get the cuurent ss holder addresses.
+    * @dev Get the current ss holder addresses.
     */
     function getHolders() public onlyAdmin constant returns (address[] _holders){
         return holders;
+    }
+
+    /*
+    * @dev Get the admin account of contract.
+    */
+    function getAdmin() public onlyAdmin constant returns (address _admin){
+        return admin;
     }
 
     /**
