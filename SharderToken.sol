@@ -17,7 +17,7 @@
     a) Added an emergency transfer function to transfer tokens to the contract owner.
     b) Removed crowdsale logic according to the MintToken standard to improve neatness and legibility of the token contract.
     c) Added the 'Frozen' broadcast event.
-    d) Changed name, symbol, decimal, etc, parameters to lower-case according to the convention. Adjust format paramters.
+    d) Changed name, symbol, decimal, etc, parameters to lower-case according to the convention. Adjust format parameters.
     e) Added a global parameter to the smart contact to prevent exchanges trading Sharder tokens before officially partnering.
     f) Added address mapping to facilitate the exchange of current ERC-20 tokens to the Sharder Chain token when it goes live.
     g) Added Lockup and lock-up query functionality.
@@ -420,7 +420,7 @@ contract SharderToken {
         name = _name;
     }
 
-    /// @dev This default function reject anyone to purchase the SS (Sharder) token. Crowdsale has finished.
+    /// @dev This default function rejects anyone to purchase the SS (Sharder) token. Crowdsale has finished.
     function() public payable {
         revert();
     }
