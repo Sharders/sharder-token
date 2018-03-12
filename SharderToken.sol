@@ -208,7 +208,7 @@ contract SharderToken {
         addOrUpdateHolder(_from);
         addOrUpdateHolder(_to);
 
-        Transfer(_from, _to, _value);
+        emit Transfer(_from, _to, _value);
 
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
@@ -246,7 +246,7 @@ contract SharderToken {
      */
     function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         allowance[msg.sender][_spender] = _approveTokensWithDecimal;
-        Approval(msg.sender, _spender, _approveTokensWithDecimal);
+        emit Approval(msg.sender, _spender, _approveTokensWithDecimal);
         return true;
     }
 
@@ -261,7 +261,7 @@ contract SharderToken {
         balanceOf[msg.sender] -= _burnedTokensWithDecimal;
         /// Subtract from the sender
         totalSupply -= _burnedTokensWithDecimal;
-        Burn(msg.sender, _burnedTokensWithDecimal);
+        emit Burn(msg.sender, _burnedTokensWithDecimal);
         return true;
     }
 
@@ -281,7 +281,7 @@ contract SharderToken {
         allowance[_from][msg.sender] -= _burnedTokensWithDecimal;
         /// Subtract from the sender's allowance
         totalSupply -= _burnedTokensWithDecimal;
-        Burn(_from, _burnedTokensWithDecimal);
+        emit Burn(_from, _burnedTokensWithDecimal);
         return true;
     }
 
@@ -329,7 +329,7 @@ contract SharderToken {
         require(!firstRoundTokenIssued);
 
         balanceOf[owner] = balanceOf[owner].add(totalSupply);
-        Issue(issueIndex++, owner, 0, totalSupply);
+        emit Issue(issueIndex++, owner, 0, totalSupply);
         addOrUpdateHolder(owner);
         firstRoundTokenIssued = true;
     }
@@ -341,7 +341,7 @@ contract SharderToken {
     function issueReserveToken(uint256 _issueTokensWithDecimal) onlyOwner public {
         balanceOf[owner] = balanceOf[owner].add(_issueTokensWithDecimal);
         totalSupply = totalSupply.add(_issueTokensWithDecimal);
-        Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
+        emit Issue(issueIndex++, owner, 0, _issueTokensWithDecimal);
     }
 
     /**
@@ -381,7 +381,7 @@ contract SharderToken {
     */
     function pause() onlyAdmin isNotPaused public {
         paused = true;
-        Pause();
+        emit Pause();
     }
 
     /**
@@ -389,7 +389,7 @@ contract SharderToken {
     */
     function unpause() onlyAdmin isPaused public {
         paused = false;
-        Unpause();
+        emit Unpause();
     }
 
     function setSymbol(string _symbol) public onlyOwner {
