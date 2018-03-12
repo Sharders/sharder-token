@@ -13,20 +13,18 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  ################ Sharder-Token-v2.0 ###############
-    a) Adding the emergency transfer functionality for owner.
-    b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and
-    legibility of the Sharder smart contract coding.
-    c) Adding the broadcast event 'Frozen'.
-    d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention. Adjust format of input paramters.
-    e) The global parameter is added to our smart contact in order to avoid that the exchanges trade Sharder tokens
-    before officials partnering with Sharder.
-    f) Add holder array to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
-    when Sharder Chain is online.
-    g) Lockup and lock-up query functions.
-    The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
+    ################ Sharder-Token-v2.0 ###############
+    a) Added an emergency transfer function to transfer tokens to the contract owner.
+    b) Removed crowdsale logic according to the MintToken standard to improve neatness and legibility of the token contract.
+    c) Added the 'Frozen' broadcast event.
+    d) Changed name, symbol, decimal, etc, parameters to lower-case according to the convention. Adjust format paramters.
+    e) Added a global parameter to the smart contact to prevent exchanges trading Sharder tokens before officially partnering.
+    f) Added address mapping to facilitate the exchange of current ERC-20 tokens to the Sharder Chain token when it goes live.
+    g) Added Lockup and lock-up query functionality.
+    
+    The deployed contract can be found at: https://etherscan.io/address/XXXXXX
 
-    Sharder-Token-v1.0 is expired. You can check the code and get the details on branch 'sharder-token-v1.0'.
+    Sharder-Token-v1.0 has expired. The deprecated code is available in the sharder-token-v1.0' branch.
 */
 pragma solidity ^0.4.18;
 
