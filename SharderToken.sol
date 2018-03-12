@@ -82,7 +82,7 @@ contract SharderToken {
     using SafeMath for uint;
     string public name = "Sharder";
     string public symbol = "SS";
-    uint8 public  decimals = 18;
+    uint8 public decimals = 18;
 
     /// +--------------------------------------------------------------+
     /// |                 SS (Sharder) Token Issue Plan                |
