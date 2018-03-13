@@ -250,6 +250,10 @@ contract SharderToken {
     /**
      * @dev Allows `_spender` to spend no more (allowance) than `_approveTokensWithDecimal` tokens in your behalf
      *
+     * !!Beware that changing an allowance with this method brings the risk that someone may use both the old
+     * and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
+     * race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
      * @param _spender The address authorized to spend.
      * @param _approveTokensWithDecimal the max amount they can spend.
      */
