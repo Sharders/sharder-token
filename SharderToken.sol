@@ -63,6 +63,16 @@ library SafeMath {
     assert(b <= a);
     return a - b;
   }
+
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    assert(c >= a);
+    return c;
+  }
+}
   
 /**
 * @title Sharder Token v2.0. SS (Sharder) is an upgrade from SS (Sharder Storage).
@@ -347,8 +357,8 @@ contract SharderToken {
 
     /**
     * @dev Freeze or Unfreeze an address
-    * @param The address that will be frozen or unfrozen
-    * @param Boolean status indicating if the address will be frozen or unfrozen.
+    * @param _address that will be frozen or unfrozen
+    * @param _frozenStatus indicating if the address will be frozen or unfrozen.
     */
     function changeFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
