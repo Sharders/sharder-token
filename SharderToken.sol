@@ -13,70 +13,59 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  ################ Sharder-Token-v2.0 ###############
-    a) Adding the emergency transfer functionality for owner.
-    b) Removing the logic of crowdsale according to standard MintToken in order to improve the neatness and
-    legibility of the Sharder smart contract coding.
-    c) Adding the broadcast event 'Frozen'.
-    d) Changing the parameters of name, symbol, decimal, etc. to lower-case according to convention. Adjust format of input paramters.
-    e) The global parameter is added to our smart contact in order to avoid that the exchanges trade Sharder tokens
-    before officials partnering with Sharder.
-    f) Add holder array to facilitate the exchange of the current ERC-20 token to the Sharder Chain token later this year
-    when Sharder Chain is online.
-    g) Lockup and lock-up query functions.
-    The deplyed online contract you can found at: https://etherscan.io/address/XXXXXX
+    ################ Sharder-Token-v2.0 ###############
+    a) Added an emergency transfer function to transfer tokens to the contract owner.
+    b) Removed crowdsale logic according to the MintToken standard to improve neatness and legibility of the token contract.
+    c) Added the 'Frozen' broadcast event.
+    d) Changed name, symbol, decimal, etc, parameters to lower-case according to the convention. Adjust format parameters.
+    e) Added a global parameter to the smart contact to prevent exchanges trading Sharder tokens before officially partnering.
+    f) Added address mapping to facilitate the exchange of current ERC-20 tokens to the Sharder Chain token when it goes live.
+    g) Added Lockup and lock-up query functionality.
+    
+    The deployed contract can be found at: https://etherscan.io/address/XXXXXX
 
-    Sharder-Token-v1.0 is expired. You can check the code and get the details on branch 'sharder-token-v1.0'.
+    Sharder-Token-v1.0 has expired. The deprecated code is available in the sharder-token-v1.0' branch.
 */
 pragma solidity ^0.4.18;
 
 /**
- * Math operations with safety checks
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
  */
 library SafeMath {
-    function mul(uint a, uint b) internal pure returns (uint) {
-        uint c = a * b;
-        assert(a == 0 || c / a == b);
-        return c;
-    }
 
-    function div(uint a, uint b) internal pure returns (uint) {
-        // assert(b > 0); // Solidity automatically throws when dividing by 0
-        uint c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-        return c;
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
     }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
 
-    function sub(uint a, uint b) internal pure returns (uint) {
-        assert(b <= a);
-        return a - b;
-    }
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
 
-    function add(uint a, uint b) internal pure returns (uint) {
-        uint c = a + b;
-        assert(c >= a);
-        return c;
-    }
-
-    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
-        return a >= b ? a : b;
-    }
-
-    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
-        return a < b ? a : b;
-    }
-
-    function max256(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a >= b ? a : b;
-    }
-
-    function min256(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
-    }
-}
-
+  /**
+  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
+  
 /**
-* @title Sharder Token v2.0. SS(Sharder) is upgrade from SS(Sharder Storage).
+* @title Sharder Token v2.0. SS (Sharder) is an upgrade from SS (Sharder Storage).
 * @author Ben - <xy@sharder.org>.
 * @dev ERC-20: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 */
@@ -84,24 +73,29 @@ contract SharderToken {
     using SafeMath for uint;
     string public name = "Sharder";
     string public symbol = "SS";
-    uint8 public  decimals = 18;
+    uint8 public decimals = 18;
 
     /// +--------------------------------------------------------------+
-    /// |                 SS(Sharder) Token Issue Plan                 |
+    /// |                 SS (Sharder) Token Issue Plan                |
     /// +--------------------------------------------------------------+
-    /// |                    First Round(Crowdsale)                    |
+    /// |                    First Round (Crowdsale)                   |
     /// +--------------------------------------------------------------+
     /// |     Total Sale    |      Airdrop      |  Community Reserve   |
     /// +--------------------------------------------------------------+
     /// |     250,000,000   |     50,000,000    |     50,000,000       |
     /// +--------------------------------------------------------------+
-    /// | Team Reserve(50,000,000 SS): Issue in 3 years period         |
+    /// | Team Reserve (50,000,000 SS): Issue in 3 year period         |
     /// +--------------------------------------------------------------+
-    /// | System Reward(100,000,000 SS): Reward by Sharder Chain Auto  |
+    /// | System Reward (100,000,000 SS): Reward by Sharder Chain Auto |
     /// +--------------------------------------------------------------+
+    
+    // Total Supply of Sharder Tokens
     uint256 public totalSupply = 350000000000000000000000000;
 
+    // Multi-dimensional mapping to keep allow transfers between addresses
     mapping (address => mapping (address => uint256)) public allowance;
+    
+    // Mapping to retrieve balance of a specific address
     mapping (address => uint256) public balanceOf;
 
     /// The owner of contract
@@ -110,11 +104,17 @@ contract SharderToken {
     /// The admin account of contract
     address public admin;
 
+    // Mapping of addresses that are locked up
     mapping (address => bool) internal accountLockup;
+    // Mapping that retrieves the current lockup time for a specific address
     mapping (address => uint) public accountLockupTime;
+    // Mapping of addresses that are frozen
     mapping (address => bool) public frozenAccounts;
 
+    // Mapping of holder addresses (index)
     mapping (address => uint) internal holderIndex;
+    
+    // Array of holder addressses
     address[] internal holders;
 
     ///First round tokens whether isssued.
@@ -189,7 +189,10 @@ contract SharderToken {
     }
 
     /**
-     * Internal transfer, only can be called by this contract
+     * @dev Internal transfer, only can be called by this contract
+     * @param _from The address to transfer from.
+     * @param _to The address to transfer to.
+     * @param _value The amount to transfer between addressses.
      */
     function _transfer(address _from, address _to, uint _value) internal isNotFrozen isNotPaused {
         // Prevent transfer to 0x0 address. Use burn() instead
@@ -204,18 +207,17 @@ contract SharderToken {
         balanceOf[_from] -= _value;
         // Add the same to the recipient
         balanceOf[_to] += _value;
-        // Update holders
+        // Update Token holders
         addOrUpdateHolder(_from);
         addOrUpdateHolder(_to);
-
+        // Send the Transfer Event
         emit Transfer(_from, _to, _value);
-
         // Asserts are used to use static analysis to find bugs in your code. They should never fail
         assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
     }
 
     /**
-     * @dev transfer token for a specified address
+     * @dev Transfer to a specific address
      * @param _to The address to transfer to.
      * @param _transferTokensWithDecimal The amount to be transferred.
     */
@@ -238,11 +240,10 @@ contract SharderToken {
     }
 
     /**
-     * Set allowance for other address
-     * Allows `_spender` to spend no more than `_approveTokensWithDecimal` tokens in your behalf
+     * @dev Allows `_spender` to spend no more (allowance) than `_approveTokensWithDecimal` tokens in your behalf
      *
-     * @param _spender The address authorized to spend
-     * @param _approveTokensWithDecimal the max amount they can spend
+     * @param _spender The address authorized to spend.
+     * @param _approveTokensWithDecimal the max amount they can spend.
      */
     function approve(address _spender, uint256 _approveTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         allowance[msg.sender][_spender] = _approveTokensWithDecimal;
@@ -251,9 +252,8 @@ contract SharderToken {
     }
 
     /**
-     * Destroy tokens
-     * Remove `_value` tokens from the system irreversibly
-     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+     * @dev Destroy tokens and remove `_value` tokens from the system irreversibly
+     * @param _burnedTokensWithDecimal The amount of tokens to burn. !!IMPORTANT is 18 DECIMALS
     */
     function burn(uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[msg.sender] >= _burnedTokensWithDecimal);
@@ -266,10 +266,9 @@ contract SharderToken {
     }
 
     /**
-     * Destroy tokens from other account
-     * Remove `_value` tokens from the system irreversibly on behalf of `_from`.
-     * @param _from the address of the sender
-     * @param _burnedTokensWithDecimal the amount of reserve tokens. !!! IMPORTANT is 18 DECIMALS
+     * @dev Destroy tokens (`_value`) from the system irreversibly on behalf of `_from`.
+     * @param _from The address of the sender.
+     * @param _burnedTokensWithDecimal The amount of tokens to burn. !!! IMPORTANT is 18 DECIMALS
     */
     function burnFrom(address _from, uint256 _burnedTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(balanceOf[_from] >= _burnedTokensWithDecimal);
@@ -286,8 +285,8 @@ contract SharderToken {
     }
 
     /**
-     * Add holder addr into arrays.
-     * @param _holderAddr the address of the holder
+     * @dev Add holder address into `holderIndex` mapping and to the `holders` array.
+     * @param _holderAddr The address of the holder
     */
     function addOrUpdateHolder(address _holderAddr) internal {
         // Check and add holder to array
@@ -336,7 +335,7 @@ contract SharderToken {
 
     /**
      * @dev Issue tokens for reserve.
-     * @param _issueTokensWithDecimal the amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
+     * @param _issueTokensWithDecimal The amount of reserve tokens. !!IMPORTANT is 18 DECIMALS
     */
     function issueReserveToken(uint256 _issueTokensWithDecimal) onlyOwner public {
         balanceOf[owner] = balanceOf[owner].add(_issueTokensWithDecimal);
@@ -345,7 +344,9 @@ contract SharderToken {
     }
 
     /**
-    * @dev Frozen or unfrozen account.
+    * @dev Freeze or Unfreeze an address
+    * @param The address that will be frozen or unfrozen
+    * @param Boolean status indicating if the address will be frozen or unfrozen.
     */
     function changeFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
@@ -363,21 +364,21 @@ contract SharderToken {
     }
 
     /**
-    * @dev Get the cuurent ss holder count.
+    * @dev Get the cuurent SS holder count.
     */
-    function getHolderCount() public constant returns (uint _holdersCount){
+    function getHolderCount() public view returns (uint _holdersCount){
         return holders.length - 1;
     }
 
-    /*
-    * @dev Get the cuurent ss holder addresses.
+    /**
+    * @dev Get the current SS holder addresses.
     */
-    function getHolders() public onlyAdmin constant returns (address[] _holders){
+    function getHolders() public onlyAdmin view returns (address[] _holders){
         return holders;
     }
 
     /**
-     * @dev called by the owner to pause, triggers stopped state
+    * @dev Pause the contract by only the owner. Triggers Pause() Event.
     */
     function pause() onlyAdmin isNotPaused public {
         paused = true;
@@ -385,22 +386,30 @@ contract SharderToken {
     }
 
     /**
-     * @dev called by the owner to unpause, returns to normal state
+    * @dev Unpause the contract by only he owner. Triggers the Unpause() Event.
     */
     function unpause() onlyAdmin isPaused public {
         paused = false;
         emit Unpause();
     }
 
+    /**
+    * @dev Change the symbol attribute of the contract by the Owner.
+    * @param _symbol Short name of the token, symbol.
+    */
     function setSymbol(string _symbol) public onlyOwner {
         symbol = _symbol;
     }
 
+    /**
+    * @dev Change the name attribute of the contract by the Owner.
+    * @param _name Name of the token, full name.
+    */
     function setName(string _name) public onlyOwner {
         name = _name;
     }
 
-    /// @dev This default function reject anyone to purchase the SS(Sharder) token after crowdsale finished.
+    /// @dev This default function rejects anyone to purchase the SS (Sharder) token. Crowdsale has finished.
     function() public payable {
         revert();
     }
