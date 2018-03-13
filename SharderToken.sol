@@ -357,8 +357,8 @@ contract SharderToken {
 
     /**
     * @dev Freeze or Unfreeze an address
-    * @param The address that will be frozen or unfrozen
-    * @param Boolean status indicating if the address will be frozen or unfrozen.
+    * @param _address that will be frozen or unfrozen
+    * @param _frozenStatus indicating if the address will be frozen or unfrozen.
     */
     function changeFrozenStatus(address _address, bool _frozenStatus) public onlyAdmin {
         frozenAccounts[_address] = _frozenStatus;
