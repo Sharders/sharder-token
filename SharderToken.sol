@@ -377,14 +377,14 @@ contract SharderToken {
     /**
     * @dev Get the cuurent SS holder count.
     */
-    function getHolderCount() public constant returns (uint _holdersCount){
+    function getHolderCount() public view returns (uint _holdersCount){
         return holders.length - 1;
     }
 
     /**
     * @dev Get the current SS holder addresses.
     */
-    function getHolders() public onlyAdmin constant returns (address[] _holders){
+    function getHolders() public onlyAdmin view returns (address[] _holders){
         return holders;
     }
 
