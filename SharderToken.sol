@@ -70,7 +70,7 @@ library SafeMath {
 * @dev ERC-20: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 */
 contract SharderToken {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     string public name = "Sharder";
     string public symbol = "SS";
     uint8 public decimals = 18;
@@ -106,14 +106,16 @@ contract SharderToken {
 
     // Mapping of addresses that are locked up
     mapping (address => bool) internal accountLockup;
+
     // Mapping that retrieves the current lockup time for a specific address
-    mapping (address => uint) public accountLockupTime;
+    mapping (address => uint256) public accountLockupTime;
+    
     // Mapping of addresses that are frozen
     mapping (address => bool) public frozenAccounts;
-
-    // Mapping of holder addresses (index)
-    mapping (address => uint) internal holderIndex;
     
+    // Mapping of holder addresses (index)
+    mapping (address => uint256) internal holderIndex;
+
     // Array of holder addressses
     address[] internal holders;
 
@@ -130,13 +132,13 @@ contract SharderToken {
     event InvalidState(bytes msg);
 
     // This notifies clients about the token issued.
-    event Issue(uint issueIndex, address addr, uint ethAmount, uint tokenAmount);
+    event Issue(uint256 issueIndex, address addr, uint256 ethAmount, uint256 tokenAmount);
 
     // This notifies clients about the amount to transfer
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     // This notifies clients about the amount to approve
-    event Approval(address indexed owner, address indexed spender, uint value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     // This notifies clients about the amount burnt
     event Burn(address indexed from, uint256 value);
@@ -194,7 +196,7 @@ contract SharderToken {
      * @param _to The address to transfer to.
      * @param _value The amount to transfer between addressses.
      */
-    function _transfer(address _from, address _to, uint _value) internal isNotFrozen isNotPaused {
+    function _transfer(address _from, address _to, uint256 _value) internal isNotFrozen isNotPaused {
         // Prevent transfer to 0x0 address. Use burn() instead
         require(_to != 0x0);
         // Check if the sender has enough
@@ -202,7 +204,7 @@ contract SharderToken {
         // Check for overflows
         require(balanceOf[_to] + _value > balanceOf[_to]);
         // Save this for an assertion in the future
-        uint previousBalances = balanceOf[_from] + balanceOf[_to];
+        uint256 previousBalances = balanceOf[_from] + balanceOf[_to];
         // Subtract from the sender
         balanceOf[_from] -= _value;
         // Add the same to the recipient
@@ -221,7 +223,7 @@ contract SharderToken {
      * @param _to The address to transfer to.
      * @param _transferTokensWithDecimal The amount to be transferred.
     */
-    function transfer(address _to, uint _transferTokensWithDecimal) public {
+    function transfer(address _to, uint256 _transferTokensWithDecimal) public {
         _transfer(msg.sender, _to, _transferTokensWithDecimal);
     }
 
@@ -231,7 +233,7 @@ contract SharderToken {
      * @param _to address The address which you want to transfer to
      * @param _transferTokensWithDecimal uint the amout of tokens to be transfered
     */
-    function transferFrom(address _from, address _to, uint _transferTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
+    function transferFrom(address _from, address _to, uint256 _transferTokensWithDecimal) public isNotFrozen isNotPaused returns (bool success) {
         require(_transferTokensWithDecimal <= allowance[_from][msg.sender]);
         // Check allowance
         allowance[_from][msg.sender] -= _transferTokensWithDecimal;
@@ -356,7 +358,7 @@ contract SharderToken {
     * @dev Lockup account till the date. Can't lock-up again when this account locked already.
     * 1 year = 31536000 seconds, 0.5 year = 15768000 seconds
     */
-    function lockupAccount(address _address, uint _lockupSeconds) public onlyAdmin {
+    function lockupAccount(address _address, uint256 _lockupSeconds) public onlyAdmin {
         require((accountLockup[_address] && now > accountLockupTime[_address]) || !accountLockup[_address]);
         // lock-up account
         accountLockupTime[_address] = now + _lockupSeconds;
@@ -366,7 +368,7 @@ contract SharderToken {
     /**
     * @dev Get the cuurent SS holder count.
     */
-    function getHolderCount() public view returns (uint _holdersCount){
+    function getHolderCount() public view returns (uint256 _holdersCount){
         return holders.length - 1;
     }
 
