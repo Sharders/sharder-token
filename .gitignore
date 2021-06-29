@@ -1,0 +1,14 @@
+.DS_Store
+.svn
+.idea*
+*.iml
+classes
+out
+contrib
+# *.bat
+jre
+.vscode
+
+package-lock.json
+
+/LocalTest
