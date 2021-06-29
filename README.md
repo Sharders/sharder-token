@@ -1,2 +1,2 @@
-# sharder-token
-ERC20-token: Sharder Storage
+# Sharder-Token
+ERC20-token: Sharder(SS)
