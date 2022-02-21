@@ -351,7 +351,7 @@ abstract contract UpgradedStandardToken is StandardToken{
     function approveByLegacy(address from, address spender, uint value) public virtual;
 }
 
-contract HMWToken is Pausable, StandardToken, BlackList {
+contract SSToken is Pausable, StandardToken, BlackList {
     using SafeMath for uint256;
 
     string public name;
