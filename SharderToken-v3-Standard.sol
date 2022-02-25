@@ -363,18 +363,19 @@ contract SSToken is Pausable, StandardToken, BlackList {
     bool public deprecated;
 
     //  The contract can be initialized with a number of tokens
-    //  All the tokens are deposited to the owner address
+    //  All the tokens are deposited to the holder address
     //
-    // @param _balance Initial supply of the contract
+    // @param _initialSupply Initial supply of the contract
+    // @param _holder All initial tokens are deposited to this address
     // @param _name Token Name
     // @param _symbol Token symbol
     // @param _decimals Token decimals
-    constructor(uint _initialSupply, string memory _name, string memory _symbol, uint _decimals){
+    constructor(uint _initialSupply,address _holder, string memory _name, string memory _symbol, uint _decimals){
         _totalSupply = _initialSupply;
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        balances[owner] = _initialSupply;
+        balances[_holder] = _initialSupply;
         deprecated = false;
     }
 
