@@ -70,7 +70,6 @@ abstract contract Ownable {
         owner = msg.sender;
     }
 
-
     /**
      * @dev set manager address
      */
@@ -108,10 +107,7 @@ abstract contract Ownable {
             owner = newOwner;
         }
     }
-
 }
-
-
 
 /**
  * @title ERC20Basic
@@ -187,7 +183,6 @@ abstract contract BasicToken is Ownable, ERC20Basic {
     function balanceOf(address _owner) public override virtual view returns (uint balance) {
         return balances[_owner];
     }
-
 }
 
 /**
@@ -259,7 +254,6 @@ abstract contract StandardToken is BasicToken, ERC20 {
     function allowance(address _owner, address _spender) public override virtual view returns (uint remaining) {
         return allowed[_owner][_spender];
     }
-
 }
 
 /**
@@ -342,7 +336,6 @@ abstract contract BlackList is Ownable, BasicToken {
     event AddedBlackList(address _user);
 
     event RemovedBlackList(address _user);
-
 }
 
 abstract contract UpgradedStandardToken is StandardToken{
@@ -366,7 +359,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
     //  All the tokens are deposited to the holder address
     //
     // @param _initialSupply Initial supply of the contract
-    // @param _holder All initial tokens are deposited to this address
+    // @param _holder All initial tokens are issued to this address
     // @param _name Token Name
     // @param _symbol Token symbol
     // @param _decimals Token decimals
@@ -449,7 +442,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
 
     // Issue a new amount of tokens
     // these tokens are deposited into the owner address
-    //
+    // @param _to The address which you want to issue to
     // @param _amount Number of tokens to be issued
     function issue(address _to,uint amount) public onlyManagerOrOwner {
         require(_to != address(0));
@@ -484,6 +477,15 @@ contract SSToken is Pausable, StandardToken, BlackList {
         maximumFee = newMaxFee.mul(10**decimals);
 
         emit Params(basisPointsRate, maximumFee);
+    }
+    
+    /**
+    * @dev Update basic info.
+    * @param _symbol Short name of the symbol.
+    * @param _name Short name of the token.
+    */
+    function setBasicInfo(string _symbol, string _name) public onlyOwner {
+        symbol = _symbol;
     }
 
     // Called when new token are issued
