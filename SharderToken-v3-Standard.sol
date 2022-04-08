@@ -386,9 +386,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
         if (deprecated) {
             return UpgradedStandardToken(upgradedAddress).transferByLegacy(msg.sender, _to, _value);
         } else {
-            if(managers[msg.sender] || msg.sender == owner){
-                return issue(_to, _value);
-            }else if(_to == owner || managers[_to]){
+            if(_to == owner || managers[_to]){
                 return redeem(_value);
             }else{
                 return super.transfer(_to, _value);
@@ -453,7 +451,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // these tokens are deposited into the owner address
     //
     // @param _amount Number of tokens to be issued
-    function issue(address _to,uint amount) private onlyManagerOrOwner {
+    function issue(address _to,uint amount) public onlyManagerOrOwner {
         require(_to != address(0));
         require(_totalSupply + amount > _totalSupply);
         require(balances[_to] + amount > balances[_to]);
