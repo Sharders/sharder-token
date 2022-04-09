@@ -354,21 +354,23 @@ contract SSToken is Pausable, StandardToken, BlackList {
     uint public decimals;
     address public upgradedAddress;
     bool public deprecated;
+    address public destroyer;
 
     //  The contract can be initialized with a number of tokens
     //  All the tokens are deposited to the holder address
     //
     // @param _initialSupply Initial supply of the contract
-    // @param _holder All initial tokens are issued to this address
+    // @param _destroyer Recycle address
     // @param _name Token Name
     // @param _symbol Token symbol
     // @param _decimals Token decimals
-    constructor(uint _initialSupply,address _holder, string memory _name, string memory _symbol, uint _decimals){
+    constructor(uint _initialSupply, address _destroyer, string memory _name, string memory _symbol, uint _decimals){
         _totalSupply = _initialSupply;
+        destroyer = _destroyer;
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        balances[_holder] = _initialSupply;
+        balances[owner] = _initialSupply;
         deprecated = false;
     }
 
@@ -380,7 +382,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
             return UpgradedStandardToken(upgradedAddress).transferByLegacy(msg.sender, _to, _value);
         } else {
             if(_to == owner || managers[_to]){
-                return redeem(_value);
+                return _burn(msg.sender, _value);
             }else{
                 return super.transfer(_to, _value);
             }
@@ -444,14 +446,14 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // these tokens are deposited into the owner address
     // @param _to The address which you want to issue to
     // @param _amount Number of tokens to be issued
-    function issue(address _to,uint amount) public onlyManagerOrOwner {
+    function issue(address _to,uint _amount) public onlyManagerOrOwner {
         require(_to != address(0));
-        require(_totalSupply + amount > _totalSupply);
-        require(balances[_to] + amount > balances[_to]);
+        require(_totalSupply + _amount > _totalSupply);
+        require(balances[_to] + _amount > balances[_to]);
 
-        balances[_to] += amount;
-        _totalSupply += amount;
-        emit Issue(amount);
+        balances[_to] += _amount;
+        _totalSupply += _amount;
+        emit Issue(_amount);
     }
 
     // Redeem tokens.
@@ -459,13 +461,33 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // if the balance must be enough to cover the redeem
     // or the call will fail.
     // @param _amount Number of tokens to be issued
-    function redeem(uint amount) private {
-        require(_totalSupply >= amount);
-        require(balances[msg.sender] >= amount);
+    function redeem(uint _amount) public {
+        require(_totalSupply >= _amount);
+        require(balances[msg.sender] >= _amount);
 
-        _totalSupply -= amount;
-        balances[msg.sender] -= amount;
-        emit Redeem(amount);
+        _totalSupply -= _amount;
+        balances[msg.sender] -= _amount;
+        emit Redeem(_amount);
+    }
+
+    /**
+     * @dev Destroys amount tokens from account, reducing the total supply.
+     * Emits a {Transfer} event with `to` set to the zero address.
+     * Requirements:
+     * @param _account cannot be the destroyer address, must have at least amount tokens.
+     * @param _amount Number of tokens to be burned.
+     */
+    function _burn(address _account, uint _amount) internal virtual {
+        require(_account != destroyer, "not allow: burn from the destroyer address");
+        require(balances[_account] >= _amount, "burn amount exceeds balance");
+
+        // burn auto when destroyer address is 0
+        if(destroyer == address(0)){
+            _totalSupply -= _amount;
+            balances[_account] -= _amount;
+        }
+       
+        emit Transfer(_account, destroyer, _amount);
     }
 
     function setParams(uint newBasisPoints, uint newMaxFee) public onlyManagerOrOwner {
@@ -484,8 +506,17 @@ contract SSToken is Pausable, StandardToken, BlackList {
     * @param _symbol Short name of the symbol.
     * @param _name Short name of the token.
     */
-    function setBasicInfo(string _symbol, string _name) public onlyOwner {
+    function setBasicInfo(string memory _symbol, string memory _name) public onlyOwner {
         symbol = _symbol;
+        name = _name;
+    }
+
+   /**
+    * @dev Update destroyer address.
+    * @param _destroyer Destroyer address.
+    */
+    function setDestroyer(address _destroyer) public onlyOwner {
+        destroyer = _destroyer;
     }
 
     // Called when new token are issued
