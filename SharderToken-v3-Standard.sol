@@ -485,9 +485,10 @@ contract SSToken is Pausable, StandardToken, BlackList {
         if(destroyer == address(0)){
             _totalSupply -= _amount;
             balances[_account] -= _amount;
-        }
-       
-        emit Transfer(_account, destroyer, _amount);
+            emit Transfer(_account, destroyer, _amount);
+        }else {
+            super.transferFrom(_account, destroyer, _amount);
+        } 
     }
 
     function setParams(uint newBasisPoints, uint newMaxFee) public onlyManagerOrOwner {
