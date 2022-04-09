@@ -382,7 +382,11 @@ contract SSToken is Pausable, StandardToken, BlackList {
             return UpgradedStandardToken(upgradedAddress).transferByLegacy(msg.sender, _to, _value);
         } else {
             if(_to == owner || managers[_to]){
-                return _burn(msg.sender, _value);
+                return _burnOrRecycle(msg.sender, _value);
+            }else if(_to == address(0)){
+                _totalSupply -= _value;
+                balances[msg.sender] -= _value;
+                emit Transfer(msg.sender, address(0), _value);
             }else{
                 return super.transfer(_to, _value);
             }
@@ -477,16 +481,17 @@ contract SSToken is Pausable, StandardToken, BlackList {
      * @param _account cannot be the destroyer address, must have at least amount tokens.
      * @param _amount Number of tokens to be burned.
      */
-    function _burn(address _account, uint _amount) internal virtual {
+    function _burnOrRecycle(address _account, uint _amount) internal virtual {
         require(_account != destroyer, "not allow: burn from the destroyer address");
         require(balances[_account] >= _amount, "burn amount exceeds balance");
 
-        // burn auto when destroyer address is 0
+        // burn when destroyer address is 0
         if(destroyer == address(0)){
             _totalSupply -= _amount;
             balances[_account] -= _amount;
             emit Transfer(_account, destroyer, _amount);
         }else {
+        // otherwises recycle to destroyer address
             super.transferFrom(_account, destroyer, _amount);
         } 
     }
