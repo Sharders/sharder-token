@@ -378,6 +378,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
     function transfer(address _to, uint _value) public override virtual whenNotPaused {
         require(!isBlackListed[msg.sender]);
         require(_to != msg.sender);
+        require(address(0) != msg.sender);
         if (deprecated) {
             return UpgradedStandardToken(upgradedAddress).transferByLegacy(msg.sender, _to, _value);
         } else {
@@ -398,6 +399,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // Forward ERC20 methods to upgraded contract if this one is deprecated
     function transferFrom(address _from, address _to, uint _value) public override virtual whenNotPaused {
         require(!isBlackListed[_from]);
+        require(address(0) != _from);
         if (deprecated) {
             return UpgradedStandardToken(upgradedAddress).transferFromByLegacy(msg.sender, _from, _to, _value);
         } else {
@@ -472,6 +474,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
 
         _totalSupply -= _amount;
         balances[msg.sender] -= _amount;
+
+        emit Transfer(msg.sender, address(0), _amount);
         emit Burn(_amount);
     }
 
