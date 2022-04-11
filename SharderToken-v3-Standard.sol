@@ -460,18 +460,17 @@ contract SSToken is Pausable, StandardToken, BlackList {
         emit Issue(_amount);
     }
 
-    // Redeem tokens.
+    // Burn tokens.
     // These tokens are withdrawn from the owner address
-    // if the balance must be enough to cover the redeem
-    // or the call will fail.
-    // @param _amount Number of tokens to be issued
-    function redeem(uint _amount) public {
+    // if the balance must be enough to cover the burn or the call will fail.
+    // @param _amount Number of tokens to be burned
+    function burn(uint _amount) public {
         require(_totalSupply >= _amount);
         require(balances[msg.sender] >= _amount);
 
         _totalSupply -= _amount;
         balances[msg.sender] -= _amount;
-        emit Redeem(_amount);
+        emit Burn(_amount);
     }
 
     /**
@@ -528,8 +527,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // Called when new token are issued
     event Issue(uint amount);
 
-    // Called when tokens are redeemed
-    event Redeem(uint amount);
+    // Called when tokens are burned
+    event Burn(uint amount);
 
     // Called when contract is deprecated
     event Deprecate(address newAddress);
