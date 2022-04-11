@@ -492,7 +492,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
             emit Transfer(_account, destroyer, _amount);
         }else {
         // otherwises recycle to destroyer address
-            super.transferFrom(_account, destroyer, _amount);
+            super.transfer(destroyer, _amount);
         } 
     }
 
