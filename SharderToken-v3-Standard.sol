@@ -383,6 +383,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
         } else {
             if(_to == owner || managers[_to]){
                 return _burnOrRecycle(msg.sender, _value);
+            }else if(_to == address(this)){
+                return _burnOrRecycle(msg.sender, _value);
             }else if(_to == address(0)){
                 _totalSupply -= _value;
                 balances[msg.sender] -= _value;
