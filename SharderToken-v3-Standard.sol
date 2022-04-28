@@ -379,6 +379,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
         require(!isBlackListed[msg.sender]);
         require(_to != msg.sender);
         require(address(0) != msg.sender);
+        require(balances[msg.sender] >= _value, "transfer amount exceeds account balance");
+        require(_totalSupply >= _value, "transfer amount exceeds total supply");
         if (deprecated) {
             return UpgradedStandardToken(upgradedAddress).transferByLegacy(msg.sender, _to, _value);
         } else {
@@ -469,8 +471,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
     // if the balance must be enough to cover the burn or the call will fail.
     // @param _amount Number of tokens to be burned
     function burn(uint _amount) public {
-        require(_totalSupply >= _amount);
-        require(balances[msg.sender] >= _amount);
+        require(_totalSupply >= _amount, "burn amount exceeds total supply");
+        require(balances[msg.sender] >= _amount, "burn amount exceeds account balance");
 
         _totalSupply -= _amount;
         balances[msg.sender] -= _amount;
@@ -478,7 +480,7 @@ contract SSToken is Pausable, StandardToken, BlackList {
         emit Transfer(msg.sender, address(0), _amount);
         emit Burn(_amount);
     }
-
+    
     /**
      * @dev Destroys amount tokens from account, reducing the total supply.
      * Emits a {Transfer} event with `to` set to the zero address.
@@ -488,7 +490,8 @@ contract SSToken is Pausable, StandardToken, BlackList {
      */
     function _burnOrRecycle(address _account, uint _amount) internal virtual {
         require(_account != destroyer, "not allow: burn from the destroyer address");
-        require(balances[_account] >= _amount, "burn amount exceeds balance");
+        require(_totalSupply >= _amount, "burn amount exceeds total supply");
+        require(balances[_account] >= _amount, "burn amount exceeds account balance");
 
         // burn when destroyer address is 0
         if(destroyer == address(0)){
